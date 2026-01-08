@@ -1,0 +1,53 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5EDE1"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:text="LunaFlow"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:textAlignment="center"
+            android:textColor="#2E2E2E"
+            android:layout_marginBottom="32dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/emailEditText"
+            android:hint="Email"
+            android:background="@android:drawable/edit_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/passwordEditText"
+            android:hint="Password"
+            android:inputType="textPassword"
+            android:layout_marginTop="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/loginButton"
+            android:text="Login"
+            android:layout_marginTop="24dp"
+            android:backgroundTint="#C1492E"
+            android:textColor="@android:color/white"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/goToRegisterButton"
+            android:text="Create account"
+            android:layout_marginTop="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+</ScrollView>
