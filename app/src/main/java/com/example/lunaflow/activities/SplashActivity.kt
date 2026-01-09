@@ -22,9 +22,9 @@ class SplashActivity : AppCompatActivity() {
             if (user != null) {
                 startActivity(Intent(this, MainActivity::class.java))
             } else {
-                startActivity(Intent(this, LoginActivity::class.java))
+                startActivity(Intent(this, WelcomeActivity::class.java))
             }
             finish()
-        }, 2000) // 2 segundos
+        }, 2000)
     }
 }
