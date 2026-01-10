@@ -6,7 +6,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.widget.Button
 import android.widget.Toast
-import com.example.lunaflow.BaseActivity
+import com.example.lunaflow.activities.BaseActivity
 import com.example.lunaflow.R
 import com.example.lunaflow.firebase.FirestoreClass
 import com.example.lunaflow.models.User
@@ -45,6 +45,7 @@ class RegisterActivity : BaseActivity() {
                     "Min 8 chars, at least 1 letter & 1 number"
                 } else null
             }
+
             override fun afterTextChanged(s: Editable?) {}
         })
 
@@ -109,6 +110,7 @@ class RegisterActivity : BaseActivity() {
                 finish()
                 true
             }
+
             else -> super.onOptionsItemSelected(item)
         }
     }

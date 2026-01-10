@@ -7,24 +7,24 @@
     android:padding="24dp">
 
     <TextView
-        android:text="LunaFlow"
-        android:textSize="32sp"
-        android:textStyle="bold"
-        android:textColor="#2E2E2E"
-        android:layout_marginBottom="32dp"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="32dp"
+        android:text="LunaFlow"
+        android:textColor="#2E2E2E"
+        android:textSize="32sp"
+        android:textStyle="bold" />
 
     <Button
         android:id="@+id/loginButton"
-        android:text="Login"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:text="Login" />
 
     <Button
         android:id="@+id/registerButton"
-        android:text="Create account"
-        android:layout_marginTop="16dp"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Create account" />
 </LinearLayout>

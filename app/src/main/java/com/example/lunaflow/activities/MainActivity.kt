@@ -3,13 +3,12 @@ package com.example.lunaflow.activities
 import android.content.Intent
 import android.os.Bundle
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import com.example.lunaflow.R
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseActivity() {
 
     private lateinit var currentPhaseText: TextView
     private lateinit var nextCycleText: TextView
@@ -18,11 +17,13 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        bottomNav = findViewById(R.id.bottomNav)
+        setupBottomNav()
+
         val auth = FirebaseAuth.getInstance()
         val uid = auth.currentUser?.uid
 
         if (uid == null) {
-            // segurança extra: se não houver user, volta ao login
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return

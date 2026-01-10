@@ -7,7 +7,7 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
-import com.example.lunaflow.BaseActivity
+import com.example.lunaflow.activities.BaseActivity
 import com.example.lunaflow.R
 import androidx.core.content.edit
 

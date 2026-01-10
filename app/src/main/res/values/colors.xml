@@ -7,4 +7,8 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- mine color -->
+    <color name="top_nav_bg">#EBE4D4</color>
+    <color name="nav_icon_color">#322323</color>
+    <color name="nav_selected_bg">#B43015</color>
 </resources>
