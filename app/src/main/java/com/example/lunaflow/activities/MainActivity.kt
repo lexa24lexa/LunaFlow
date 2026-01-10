@@ -1,59 +1,46 @@
 package com.example.lunaflow.activities
 
+import android.content.Intent
 import android.os.Bundle
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.example.lunaflow.R
-import com.example.lunaflow.adapters.CycleAdapter
-import com.example.lunaflow.models.CycleRecord
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var adapter: CycleAdapter
-    private val cycleList = mutableListOf<CycleRecord>()
+    private lateinit var currentPhaseText: TextView
+    private lateinit var nextCycleText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        val auth = FirebaseAuth.getInstance()
+        val uid = auth.currentUser?.uid
 
-        recyclerView = findViewById(R.id.recyclerView)
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        adapter = CycleAdapter(cycleList)
-        recyclerView.adapter = adapter
+        if (uid == null) {
+            // segurança extra: se não houver user, volta ao login
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
 
-        loadCycles()
-    }
+        currentPhaseText = findViewById(R.id.currentPhase)
+        nextCycleText = findViewById(R.id.nextCycle)
 
-    private fun loadCycles() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val currentPhase = "Luteal"
 
-        FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(userId)
-            .collection("cycles")
-            .get()
-            .addOnSuccessListener { querySnapshot ->
-                cycleList.clear()
+        val nextCycleDate = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_MONTH, 14)
+        }.time
 
-                querySnapshot.documents.forEach { doc ->
-                    val cycle = doc.toObject(CycleRecord::class.java)
-                    if (cycle != null) {
-                        cycleList.add(cycle)
-                    }
-                }
+        val formatter = SimpleDateFormat("MMMM dd", Locale.ENGLISH)
+        val nextCycleStr = formatter.format(nextCycleDate)
 
-                adapter.notifyDataSetChanged()
-            }
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
+        currentPhaseText.text = "You are in $currentPhase Phase"
+        nextCycleText.text = "Next cycle in 14 days, scheduled for $nextCycleStr"
     }
 }
