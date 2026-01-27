@@ -7,9 +7,12 @@ class HistoryActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_history)
+        setContentLayout(R.layout.activity_history)
 
-        bottomNav = findViewById(R.id.bottomNav)
+        // Bottom navigation
+        setToolbarTitle("History")
         setupBottomNav(R.id.nav_history)
+        showToolbar(true)
+        showBottomNav(true)
     }
 }

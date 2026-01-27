@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="#F5EDE1">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Select Activities"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <CheckBox android:id="@+id/sex" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sex"/>
+        <CheckBox android:id="@+id/masturbation" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Masturbation"/>
+        <CheckBox android:id="@+id/planBPill" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Plan B pill"/>
+        <CheckBox android:id="@+id/birthControl" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Birth control"/>
+        <CheckBox android:id="@+id/otherMedication" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Other medication"/>
+
+        <!-- Sex details -->
+        <LinearLayout
+            android:id="@+id/sexOptionsLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginTop="8dp">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Protection used?"/>
+            <RadioGroup
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+                <RadioButton android:id="@+id/usedProtectionYes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Yes"/>
+                <RadioButton android:id="@+id/usedProtectionNo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="No"/>
+            </RadioGroup>
+            <EditText android:id="@+id/sexDetails" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Details"/>
+        </LinearLayout>
+
+        <!-- Plan B details -->
+        <LinearLayout
+            android:id="@+id/planBOptionsLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginTop="8dp">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pill Type"/>
+            <RadioGroup
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+                <RadioButton android:id="@+id/levonorgestrel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Levonorgestrel"/>
+                <RadioButton android:id="@+id/lipristal" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Lipristal"/>
+            </RadioGroup>
+
+            <EditText android:id="@+id/timeSinceIntercourse" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Time since intercourse"/>
+            <EditText android:id="@+id/planBDetails" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Details"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="24dp">
+
+            <Button
+                android:id="@+id/saveButton"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Save"
+                android:backgroundTint="#C1492E"
+                android:textColor="@android:color/white"/>
+
+            <Button
+                android:id="@+id/cancelButton"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Cancel"
+                android:layout_marginStart="16dp"/>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

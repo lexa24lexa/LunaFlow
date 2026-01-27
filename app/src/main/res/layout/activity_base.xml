@@ -1,34 +1,39 @@
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/white">
 
-    <!-- topbar -->
+    <!-- header -->
     <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/topBar"
+        android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/top_nav_bg"
+        android:layout_height="48dp"
+        android:background="@color/colorPrimary"
         android:title="LunaFlow"
-        android:titleTextColor="@android:color/black"
-        app:elevation="4dp" />
+        android:titleTextColor="@color/mainBrown"
+        app:titleCentered="true"
+        android:elevation="4dp"/>
 
-    <!-- screen -->
+    <!-- screen container -->
     <FrameLayout
         android:id="@+id/container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="?attr/actionBarSize"
-        android:layout_marginBottom="56dp" />
+        android:layout_marginTop="48dp"
+        android:layout_marginBottom="50dp" />
 
-    <!-- navbar -->
+    <!-- bottom nav bar -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNav"
+        android:id="@+id/bottomNavigationView"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="50dp"
         android:layout_gravity="bottom"
-        android:background="@color/top_nav_bg"
-        app:itemIconTint="@color/nav_icon_color"
-        app:itemTextColor="@color/nav_icon_color"
-        app:menu="@menu/bottom_nav_menu" />
+        android:background="@color/colorPrimary"
+        app:itemTextAppearanceActive="@style/BottomNavText.Selected"
+        app:itemTextAppearanceInactive="@style/BottomNavText"
+        app:itemIconTint="@color/mainBrown"
+        app:itemTextColor="@color/mainBrown"
+        app:menu="@menu/bottom_nav_menu"/>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

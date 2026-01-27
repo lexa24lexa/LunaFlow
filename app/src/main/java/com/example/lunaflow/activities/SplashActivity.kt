@@ -2,11 +2,12 @@ package com.example.lunaflow.activities
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.example.lunaflow.R
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class SplashActivity : AppCompatActivity() {
 
@@ -14,17 +15,15 @@ class SplashActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)
 
-        supportActionBar?.hide()
+        lifecycleScope.launch {
+            delay(2000) // 2-second splash
 
-        Handler(Looper.getMainLooper()).postDelayed({
             val user = FirebaseAuth.getInstance().currentUser
+            val nextActivity = if (user != null) MainActivity::class.java else WelcomeActivity::class.java
 
-            if (user != null) {
-                startActivity(Intent(this, MainActivity::class.java))
-            } else {
-                startActivity(Intent(this, WelcomeActivity::class.java))
-            }
+            startActivity(Intent(this@SplashActivity, nextActivity))
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
             finish()
-        }, 2000)
+        }
     }
 }

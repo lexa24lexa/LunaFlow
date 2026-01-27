@@ -1,5 +1,6 @@
 package com.example.lunaflow.activities
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -7,11 +8,11 @@ import android.view.Gravity
 import android.widget.GridLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.lunaflow.R
 import com.example.lunaflow.adapters.AdviceAdapter
 import com.example.lunaflow.models.Advice
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
@@ -25,12 +26,26 @@ class MainActivity : BaseActivity() {
     private lateinit var calendarDaysGrid: GridLayout
     private lateinit var calendarMonthYear: TextView
 
+    @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentLayout(R.layout.activity_main)
 
-        bottomNav = findViewById(R.id.bottomNav)
-        setupBottomNav()
+        setToolbarTitle("LunaFlow")
+        setupBottomNav(R.id.nav_home)
+        showToolbar(true)
+        showBottomNav(true)
+
+        currentPhaseText = findViewById(R.id.currentPhase)
+        nextCycleText = findViewById(R.id.nextCycle)
+        adviceRecyclerView = findViewById(R.id.adviceRecyclerView)
+        calendarDaysGrid = findViewById(R.id.calendarDaysGrid)
+        calendarMonthYear = findViewById(R.id.calendarMonthYear)
+
+        val btnLogChoice: FloatingActionButton = findViewById(R.id.btnLogChoice)
+        btnLogChoice.setOnClickListener {
+            startActivity(Intent(this, LogChoiceActivity::class.java))
+        }
 
         val uid = FirebaseAuth.getInstance().currentUser?.uid
         if (uid == null) {
@@ -39,16 +54,7 @@ class MainActivity : BaseActivity() {
             return
         }
 
-        currentPhaseText = findViewById(R.id.currentPhase)
-        nextCycleText = findViewById(R.id.nextCycle)
-        adviceRecyclerView = findViewById(R.id.adviceRecyclerView)
-        adviceRecyclerView.layoutManager = LinearLayoutManager(this)
-
-        calendarDaysGrid = findViewById(R.id.calendarDaysGrid)
-        calendarMonthYear = findViewById(R.id.calendarMonthYear)
-
         val currentPhase = "Luteal"
-
         val nextCycleDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 14) }.time
         val formatter = SimpleDateFormat("MMMM dd", Locale.ENGLISH)
         nextCycleText.text = "Next cycle in 14 days, scheduled for ${formatter.format(nextCycleDate)}"
@@ -67,14 +73,13 @@ class MainActivity : BaseActivity() {
             .get()
             .addOnSuccessListener { result ->
                 val advices = result.documents.mapNotNull { it.toObject(Advice::class.java) }
-                if (advices.isNotEmpty()) {
+                val adviceToShow = if (advices.isNotEmpty()) {
                     val lastIndex = prefs.getInt("last_advice_index_$phase", 0)
-                    val adviceToShow = advices[lastIndex % advices.size]
-                    adviceRecyclerView.adapter = AdviceAdapter(listOf(adviceToShow))
                     prefs.edit().putInt("last_advice_index_$phase", lastIndex + 1).apply()
-                } else {
-                    adviceRecyclerView.adapter = AdviceAdapter(listOf(Advice(phase, "No advice available.")))
-                }
+                    advices[lastIndex % advices.size]
+                } else Advice(phase, "No advice available.")
+
+                adviceRecyclerView.adapter = AdviceAdapter(listOf(adviceToShow))
             }
             .addOnFailureListener {
                 adviceRecyclerView.adapter = AdviceAdapter(listOf(Advice(phase, "Failed to load advice.")))
@@ -90,10 +95,9 @@ class MainActivity : BaseActivity() {
 
         val tempCal = calendar.clone() as Calendar
         tempCal.set(Calendar.DAY_OF_MONTH, 1)
-        val firstDayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK) // Sunday = 1
+        val firstDayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK)
         val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
 
-        // blank offsets
         for (i in 1 until firstDayOfWeek) {
             val blankView = TextView(this)
             blankView.layoutParams = GridLayout.LayoutParams().apply {
@@ -104,7 +108,6 @@ class MainActivity : BaseActivity() {
             calendarDaysGrid.addView(blankView)
         }
 
-        // days
         for (day in 1..daysInMonth) {
             val dayView = TextView(this)
             dayView.text = day.toString()

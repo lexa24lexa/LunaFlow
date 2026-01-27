@@ -24,7 +24,12 @@ class RegisterActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_register)
+        setContentLayout(R.layout.activity_register)
+
+        //setToolbarTitle("LunaFlow")
+        //setupBottomNav(R.id.nav_home)
+        showToolbar(false)
+        showBottomNav(false)
 
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 

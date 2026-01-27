@@ -3,25 +3,23 @@ package com.example.lunaflow.activities
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
-import androidx.appcompat.app.AppCompatActivity
 import com.example.lunaflow.R
 
-class WelcomeActivity : AppCompatActivity() {
+class WelcomeActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_welcome)
+        setContentLayout(R.layout.activity_welcome)
 
-        supportActionBar?.hide()
+        // Toolbar & bottom nav setup
+        setToolbarTitle("LunaFlow")
+        showToolbar(false)
+        showBottomNav(false)
 
-        val loginButton = findViewById<Button>(R.id.loginButton)
-        val registerButton = findViewById<Button>(R.id.registerButton)
-
-        loginButton.setOnClickListener {
+        findViewById<Button>(R.id.loginButton).setOnClickListener {
             startActivity(Intent(this, LoginActivity::class.java))
         }
-
-        registerButton.setOnClickListener {
+        findViewById<Button>(R.id.registerButton).setOnClickListener {
             startActivity(Intent(this, RegisterActivity::class.java))
         }
     }

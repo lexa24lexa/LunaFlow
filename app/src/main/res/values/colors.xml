@@ -1,14 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- not used colors but can't delete them -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
+    <color name="colorBackground">#FFFFFFFF</color>
+
+    <!-- app background -->
     <color name="white">#FFFFFFFF</color>
-    <!-- mine color -->
-    <color name="top_nav_bg">#EBE4D4</color>
-    <color name="nav_icon_color">#322323</color>
-    <color name="nav_selected_bg">#B43015</color>
+    <!-- nav + header + components bg -->
+    <color name="colorPrimary">#EBE4D4</color>
+    <!-- nav icon + text -->
+    <color name="mainBrown">#322323</color>
+    <!-- titles + plus button + icons + shadow page selected navbar-->
+    <color name="mainRed">#B43015</color>
+    <!-- save button -->
+    <color name="saveButton">#5CD955</color>
 </resources>

@@ -15,7 +15,12 @@ class LoginActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_login)
+        setContentLayout(R.layout.activity_login)
+
+        //setToolbarTitle("LunaFlow")
+        //setupBottomNav(R.id.nav_home)
+        showToolbar(false)
+        showBottomNav(false)
 
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
