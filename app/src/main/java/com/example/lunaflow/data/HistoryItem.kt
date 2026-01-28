@@ -10,3 +10,15 @@ sealed class HistoryItem {
         val details: String
     ) : HistoryItem()
 }
+
+// types for filter
+enum class HistoryFilterTag {
+    SEX,
+    MASTURBATION,
+    PLAN_B,
+    BIRTH_CONTROL,
+    OTHER_MEDICATION,
+    PHYSICAL_SYMPTOMS,
+    EMOTIONAL_SYMPTOMS,
+    FLOW
+}

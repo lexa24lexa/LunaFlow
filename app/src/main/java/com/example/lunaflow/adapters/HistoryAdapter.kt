@@ -1,5 +1,6 @@
 package com.example.lunaflow.adapters
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,12 +10,18 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.lunaflow.R
 import com.example.lunaflow.data.HistoryItem
 
-class HistoryAdapter(private val items: List<HistoryItem>) :
+class HistoryAdapter(private var items: List<HistoryItem>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
         private const val TYPE_HEADER = 0
         private const val TYPE_LOG = 1
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    fun updateList(newItems: List<HistoryItem>) {
+        items = newItems
+        notifyDataSetChanged()
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -70,7 +77,7 @@ class HistoryAdapter(private val items: List<HistoryItem>) :
                 when(item.type) {
                     "activity" -> R.drawable.ic_activity
                     "pill" -> R.drawable.ic_pill
-                    "symptom" -> R.drawable.ic_symptom
+                    "symptoms" -> R.drawable.ic_symptom
                     else -> R.drawable.ic_event
                 }
             )
