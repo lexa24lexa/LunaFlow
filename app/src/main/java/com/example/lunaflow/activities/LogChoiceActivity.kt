@@ -3,6 +3,7 @@ package com.example.lunaflow.activities
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
+import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
 import com.example.lunaflow.R
 
@@ -21,6 +22,10 @@ class LogChoiceActivity : AppCompatActivity() {
 
         activityButton.setOnClickListener {
             startActivity(Intent(this, LogActivityActivity::class.java))
+        }
+
+        findViewById<ImageButton>(R.id.backButton).setOnClickListener {
+            finish()
         }
     }
 }

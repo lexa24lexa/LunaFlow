@@ -4,14 +4,16 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:background="#EFE6DC"
+    android:background="@color/colorPrimary"
     android:padding="12dp"
     android:layout_marginBottom="12dp"
     android:elevation="2dp">
 
     <ImageView
+        android:id="@+id/entryIcon"
         android:layout_width="32dp"
         android:layout_height="32dp"
+        android:layout_gravity="top"
         android:src="@drawable/ic_event"
         app:tint="#C95A3F" />
 
@@ -19,28 +21,39 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_marginStart="12dp"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:layout_marginStart="12dp">
 
         <TextView
+            android:id="@+id/entryTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="17:00"
             android:textStyle="bold"
-            android:textSize="14sp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:textSize="14sp"/>
 
         <TextView
-            android:text="Took Plan B pill"
+            android:id="@+id/entryTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Activity Title"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_marginTop="2dp"
+            android:ellipsize="none"
+            android:scrollHorizontally="false"
+            android:singleLine="false"/>
 
         <TextView
-            android:text="3h after intercourse."
-            android:textSize="14sp"
+            android:id="@+id/entryDetails"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:text="Details about the activity or symptom"
+            android:textSize="14sp"
+            android:layout_marginTop="2dp"
+            android:ellipsize="none"
+            android:scrollHorizontally="false"
+            android:singleLine="false"/>
     </LinearLayout>
 
 </LinearLayout>

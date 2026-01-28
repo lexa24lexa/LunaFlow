@@ -13,13 +13,11 @@ class ProfileActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentLayout(R.layout.activity_profile)
 
-        // Bottom navigation
-        setToolbarTitle("Profile")
+        setToolbarTitle("LunaFlow")
         setupBottomNav(R.id.nav_profile)
         showToolbar(true)
         showBottomNav(true)
 
-        // Logout button
         val logoutButton = findViewById<TextView>(R.id.logoutButton)
         logoutButton.setOnClickListener {
             showLogoutConfirmation()
