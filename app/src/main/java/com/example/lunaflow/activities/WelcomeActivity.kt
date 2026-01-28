@@ -11,7 +11,6 @@ class WelcomeActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentLayout(R.layout.activity_welcome)
 
-        // Toolbar & bottom nav setup
         setToolbarTitle("LunaFlow")
         showToolbar(false)
         showBottomNav(false)

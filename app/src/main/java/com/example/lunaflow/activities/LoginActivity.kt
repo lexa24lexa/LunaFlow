@@ -17,8 +17,6 @@ class LoginActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentLayout(R.layout.activity_login)
 
-        //setToolbarTitle("LunaFlow")
-        //setupBottomNav(R.id.nav_home)
         showToolbar(false)
         showBottomNav(false)
 

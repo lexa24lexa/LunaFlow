@@ -26,8 +26,6 @@ class RegisterActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentLayout(R.layout.activity_register)
 
-        //setToolbarTitle("LunaFlow")
-        //setupBottomNav(R.id.nav_home)
         showToolbar(false)
         showBottomNav(false)
 

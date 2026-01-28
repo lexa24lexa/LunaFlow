@@ -1,15 +1,15 @@
 package com.example.lunaflow.activities
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
 import com.example.lunaflow.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
-class LogActivityActivity : AppCompatActivity() {
+class LogActivityActivity : BaseActivity() {
 
     private lateinit var timeSinceSpinner: Spinner
     private lateinit var otherMedSpinner: Spinner
@@ -17,7 +17,12 @@ class LogActivityActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_log_activity)
+        setContentLayout(R.layout.activity_log_activity)
+
+        setToolbarTitle("LunaFlow")
+        showToolbar(true)
+        showBottomNav(true)
+        setupBottomNav()
 
         val sexLayout: LinearLayout = findViewById(R.id.sexOptionsLayout)
         val planBLayout: LinearLayout = findViewById(R.id.planBOptionsLayout)
@@ -72,9 +77,10 @@ class LogActivityActivity : AppCompatActivity() {
     }
 
     private fun saveActivity() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        val userId = auth.currentUser?.uid
         if (userId == null) {
-            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
             return
         }
 
@@ -128,7 +134,7 @@ class LogActivityActivity : AppCompatActivity() {
             activityData["planBDetails"] = findViewById<EditText>(R.id.planBDetails).text.toString().trim()
         }
 
-        if (otherMedChecked && otherMedSpinner.selectedItem != null) {
+        if (otherMedChecked && otherMedSpinner.adapter != null && otherMedSpinner.adapter.count > 0) {
             val selectedMed = otherMedSpinner.selectedItem.toString()
             activityData["otherMedication"] = selectedMed
 

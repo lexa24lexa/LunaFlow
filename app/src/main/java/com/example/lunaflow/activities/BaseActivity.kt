@@ -41,7 +41,7 @@ abstract class BaseActivity : AppCompatActivity() {
     /**
      * Setup bottom navigation with correct selected item.
      */
-    protected fun setupBottomNav(selectedItemId: Int) {
+    protected fun setupBottomNav(selectedItemId: Int? = null) {
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> {
@@ -69,8 +69,11 @@ abstract class BaseActivity : AppCompatActivity() {
             }
         }
 
-        // Set the correct selected item
-        bottomNav.selectedItemId = selectedItemId
+        if (selectedItemId != null) {
+            bottomNav.selectedItemId = selectedItemId
+        } else {
+            bottomNav.menu.setGroupCheckable(0, false, true)
+        }
     }
 
     /**

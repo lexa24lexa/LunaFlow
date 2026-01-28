@@ -8,17 +8,6 @@
     android:padding="24dp"
     android:background="@color/white">
 
-    <ImageButton
-        android:id="@+id/backButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@drawable/ic_baseline_arrow_back_24"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Back"
-        android:layout_gravity="start"
-        android:layout_marginBottom="16dp"
-        app:tint="#C1492E" />
-
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

@@ -63,11 +63,11 @@ class HistoryActivity : BaseActivity() {
                     }
 
                     // type
-                    val activityMap = doc.get("activity") as? Map<String, Any>
-                    val symptomsMap = doc.get("symptoms") as? Map<String, Any>
+                    val activityMap = doc.get("activity") as? Map<String, Any> ?: emptyMap()
+                    val symptomsMap = doc.get("symptoms") as? Map<String, Any> ?: emptyMap()
                     val type = when {
-                        activityMap != null -> "activity"
-                        symptomsMap != null -> "symptom"
+                        activityMap.isNotEmpty() -> "activity"
+                        symptomsMap.isNotEmpty() -> "symptom"
                         else -> "pill"
                     }
 

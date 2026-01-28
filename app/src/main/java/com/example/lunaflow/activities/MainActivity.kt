@@ -30,8 +30,14 @@ class MainActivity : BaseActivity() {
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentLayout(R.layout.activity_main)
 
+        if (auth.currentUser == null) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
+
+        setContentLayout(R.layout.activity_main)
         setToolbarTitle("LunaFlow")
         setupBottomNav(R.id.nav_home)
         showToolbar(true)
@@ -47,26 +53,15 @@ class MainActivity : BaseActivity() {
             LinearLayoutManager(this, RecyclerView.VERTICAL, false)
         adviceRecyclerView.setHasFixedSize(true)
 
-        val btnLogChoice: FloatingActionButton = findViewById(R.id.btnLogChoice)
-        btnLogChoice.setOnClickListener {
+        findViewById<FloatingActionButton>(R.id.btnLogChoice).setOnClickListener {
             startActivity(Intent(this, LogChoiceActivity::class.java))
         }
 
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
-        if (uid == null) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
-
         val currentPhase = "Luteal"
-        val nextCycleDate = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_MONTH, 14)
-        }.time
-
-        val formatter = SimpleDateFormat("MMMM dd", Locale.ENGLISH)
-        nextCycleText.text =
-            "Next cycle in 14 days, scheduled for ${formatter.format(nextCycleDate)}"
+        val nextCycleDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 14) }.time
+        nextCycleText.text = "Next cycle in 14 days, scheduled for ${
+            SimpleDateFormat("MMMM dd", Locale.ENGLISH).format(nextCycleDate)
+        }"
         currentPhaseText.text = "You are in $currentPhase Phase"
 
         fetchAdviceForPhase(currentPhase)
@@ -81,34 +76,22 @@ class MainActivity : BaseActivity() {
             .whereEqualTo("phase", phase)
             .get()
             .addOnSuccessListener { result ->
-                val advices = result.documents.mapNotNull {
-                    it.toObject(Advice::class.java)
-                }
-
+                val advices = result.documents.mapNotNull { it.toObject(Advice::class.java) }
                 val adviceToShow = if (advices.isNotEmpty()) {
                     val lastIndex = prefs.getInt("last_advice_index_$phase", 0)
-                    prefs.edit()
-                        .putInt("last_advice_index_$phase", lastIndex + 1)
-                        .apply()
+                    prefs.edit().putInt("last_advice_index_$phase", lastIndex + 1).apply()
                     advices[lastIndex % advices.size]
-                } else {
-                    Advice(phase, "No advice available.")
-                }
-
-                adviceRecyclerView.adapter =
-                    AdviceAdapter(listOf(adviceToShow))
+                } else Advice(phase, "No advice available.")
+                adviceRecyclerView.adapter = AdviceAdapter(listOf(adviceToShow))
             }
             .addOnFailureListener {
-                adviceRecyclerView.adapter =
-                    AdviceAdapter(listOf(Advice(phase, "Failed to load advice.")))
+                adviceRecyclerView.adapter = AdviceAdapter(listOf(Advice(phase, "Failed to load advice.")))
             }
     }
 
     private fun setupCalendar() {
         val calendar = Calendar.getInstance()
-        val sdf = SimpleDateFormat("MMMM yyyy", Locale.ENGLISH)
-        calendarMonthYear.text = sdf.format(calendar.time)
-
+        calendarMonthYear.text = SimpleDateFormat("MMMM yyyy", Locale.ENGLISH).format(calendar.time)
         calendarDaysGrid.removeAllViews()
 
         val tempCal = calendar.clone() as Calendar
@@ -116,42 +99,41 @@ class MainActivity : BaseActivity() {
         val firstDayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK)
         val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
 
+        // blank spaces
         for (i in 1 until firstDayOfWeek) {
             val blankView = TextView(this)
             blankView.layoutParams = GridLayout.LayoutParams().apply {
                 width = 0
-                height = 100
+                height = GridLayout.LayoutParams.WRAP_CONTENT
                 columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
             }
             calendarDaysGrid.addView(blankView)
         }
 
         for (day in 1..daysInMonth) {
-            val dayView = TextView(this)
-            dayView.text = day.toString()
-            dayView.gravity = Gravity.CENTER
-            dayView.setPadding(8, 8, 8, 8)
-            dayView.setBackgroundResource(R.drawable.rounded_background)
+            val dayView = TextView(this).apply {
+                text = day.toString()
+                gravity = Gravity.CENTER
+                setPadding(8, 8, 8, 8)
+                setBackgroundResource(R.drawable.rounded_background)
 
-            val today = Calendar.getInstance()
-            if (calendar.get(Calendar.MONTH) == today.get(Calendar.MONTH)
-                && day == today.get(Calendar.DAY_OF_MONTH)
-            ) {
-                dayView.setBackgroundColor(Color.parseColor("#C1492E"))
-                dayView.setTextColor(Color.WHITE)
+                val today = Calendar.getInstance()
+                if (calendar.get(Calendar.MONTH) == today.get(Calendar.MONTH)
+                    && day == today.get(Calendar.DAY_OF_MONTH)
+                ) {
+                    setBackgroundColor(Color.parseColor("#C1492E"))
+                    setTextColor(Color.WHITE)
+                }
+
+                setOnClickListener { Toast.makeText(context, "Clicked on day $day", Toast.LENGTH_SHORT).show() }
+
+                layoutParams = GridLayout.LayoutParams().apply {
+                    width = 0
+                    height = GridLayout.LayoutParams.WRAP_CONTENT
+                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                    setMargins(4, 4, 4, 4)
+                }
             }
-
-            dayView.setOnClickListener {
-                Toast.makeText(this, "Clicked on day $day", Toast.LENGTH_SHORT).show()
-            }
-
-            dayView.layoutParams = GridLayout.LayoutParams().apply {
-                width = 0
-                height = 100
-                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-                setMargins(4, 4, 4, 4)
-            }
-
             calendarDaysGrid.addView(dayView)
         }
     }

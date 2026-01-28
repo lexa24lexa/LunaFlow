@@ -11,6 +11,13 @@ class ProfileActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (auth.currentUser == null) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
+
         setContentLayout(R.layout.activity_profile)
 
         setToolbarTitle("LunaFlow")

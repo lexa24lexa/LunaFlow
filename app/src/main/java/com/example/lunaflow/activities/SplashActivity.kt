@@ -16,7 +16,7 @@ class SplashActivity : AppCompatActivity() {
         setContentView(R.layout.activity_splash)
 
         lifecycleScope.launch {
-            delay(2000) // 2-second splash
+            delay(2000)
 
             val user = FirebaseAuth.getInstance().currentUser
             val nextActivity = if (user != null) MainActivity::class.java else WelcomeActivity::class.java

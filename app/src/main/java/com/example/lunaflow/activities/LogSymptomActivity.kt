@@ -1,37 +1,42 @@
 package com.example.lunaflow.activities
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
 import com.example.lunaflow.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
-class LogSymptomActivity : AppCompatActivity() {
+class LogSymptomActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_log_symptom)
 
-        val saveButton: Button = findViewById(R.id.saveButton)
-        val cancelButton: Button = findViewById(R.id.cancelButton)
-
-        saveButton.setOnClickListener {
-            saveSymptoms()
-        }
-
-        cancelButton.setOnClickListener { finish() }
-    }
-
-    private fun saveSymptoms() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        if (userId == null) {
-            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+        if (auth.currentUser == null) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
             return
         }
 
-        // collect symptom values
+        setContentLayout(R.layout.activity_log_symptom)
+        setToolbarTitle("LunaFlow")
+        showToolbar(true)
+        showBottomNav(true)
+        setupBottomNav()
+
+        findViewById<Button>(R.id.saveButton).setOnClickListener { saveSymptoms() }
+        findViewById<Button>(R.id.cancelButton).setOnClickListener { finish() }
+    }
+
+    private fun saveSymptoms() {
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
+
         val nausea = findViewById<CheckBox>(R.id.nausea).isChecked
         val headache = findViewById<CheckBox>(R.id.headache).isChecked
         val cramps = findViewById<CheckBox>(R.id.cramps).isChecked
@@ -41,13 +46,11 @@ class LogSymptomActivity : AppCompatActivity() {
         val moodSwings = findViewById<CheckBox>(R.id.moodSwings).isChecked
         val anxiety = findViewById<CheckBox>(R.id.anxiety).isChecked
         val irritability = findViewById<CheckBox>(R.id.irritability).isChecked
-        val otherSymptomsText = findViewById<EditText>(R.id.otherSymptoms).text.toString().trim()
+        val otherSymptomsText = findViewById<EditText>(R.id.otherSymptoms).text?.toString()?.trim() ?: ""
 
-        // check if at least one symptom or otherSymptoms is filled
         val anySymptomSelected = nausea || headache || cramps || bloating || dizziness || fatigue ||
                 moodSwings || anxiety || irritability || otherSymptomsText.isNotEmpty()
 
-        // flow
         val flowGroup = findViewById<RadioGroup>(R.id.flowRadioGroup)
         val flowSelected = flowGroup.checkedRadioButtonId != -1
 
@@ -56,7 +59,6 @@ class LogSymptomActivity : AppCompatActivity() {
             return
         }
 
-        // symptoms data
         val symptoms = hashMapOf(
             "nausea" to nausea,
             "headache" to headache,
@@ -70,7 +72,6 @@ class LogSymptomActivity : AppCompatActivity() {
             "otherSymptoms" to otherSymptomsText
         )
 
-        // flow
         val flow = when (flowGroup.checkedRadioButtonId) {
             R.id.flowLight -> "Light"
             R.id.flowMedium -> "Medium"
@@ -78,7 +79,6 @@ class LogSymptomActivity : AppCompatActivity() {
             else -> "None"
         }
 
-        // save information to firestore
         val log = hashMapOf(
             "type" to "symptoms",
             "timestamp" to FieldValue.serverTimestamp(),
