@@ -8,8 +8,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.lunaflow.R
 import com.example.lunaflow.models.Advice
 
-class AdviceAdapter(private val adviceList: List<Advice>) :
-    RecyclerView.Adapter<AdviceAdapter.AdviceViewHolder>() {
+class AdviceAdapter(
+    private val adviceList: List<Advice>
+) : RecyclerView.Adapter<AdviceAdapter.AdviceViewHolder>() {
 
     inner class AdviceViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val adviceText: TextView = itemView.findViewById(R.id.adviceItemText)
@@ -26,5 +27,7 @@ class AdviceAdapter(private val adviceList: List<Advice>) :
         holder.adviceText.text = advice.adviceText
     }
 
-    override fun getItemCount(): Int = adviceList.size
+    override fun getItemCount(): Int {
+        return adviceList.size
+    }
 }

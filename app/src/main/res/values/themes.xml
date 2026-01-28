@@ -7,7 +7,7 @@
 
         <!-- Primary surfaces (toolbar, app bar, etc.) -->
         <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorOnPrimary">@color/mainBrown</item> <!-- ensures icons/text on primary are brown -->
+        <item name="colorOnPrimary">@color/mainBrown</item>
 
         <!-- Secondary / accent -->
         <item name="colorSecondary">@color/mainRed</item>
@@ -23,13 +23,14 @@
         <item name="bottomNavigationStyle">@style/BottomNavStyle</item>
     </style>
 
-    <!-- Custom toolbar style: smaller height + correct text color -->
+    <!-- Custom toolbar style -->
     <style name="AppActionBar" parent="Widget.MaterialComponents.Toolbar">
-        <item name="android:layout_height">48dp</item> <!-- smaller header -->
-        <item name="android:background">@color/colorPrimary</item> <!-- header bg -->
-        <item name="titleTextColor">@color/mainBrown</item> <!-- header text -->
+        <item name="android:layout_height">48dp</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:background">@color/colorPrimary</item>
+        <item name="titleTextColor">@color/mainBrown</item>
         <item name="subtitleTextColor">@color/mainBrown</item>
-        <item name="android:theme">@style/ToolbarTextTheme</item> <!-- enforce text color -->
+        <item name="android:theme">@style/ToolbarTextTheme</item>
     </style>
 
     <!-- Toolbar text theme to force mainBrown for all text/icons -->
@@ -41,20 +42,20 @@
 
     <!-- Bottom nav text styles -->
     <style name="BottomNavText">
-        <item name="android:textSize">12sp</item>
+        <item name="android:textSize">18sp</item>
         <item name="android:textColor">@color/mainBrown</item>
         <item name="android:textStyle">normal</item>
     </style>
 
     <style name="BottomNavText.Selected">
-        <item name="android:textSize">12sp</item>
+        <item name="android:textSize">18sp</item>
         <item name="android:textColor">@color/mainRed</item>
         <item name="android:textStyle">bold</item>
     </style>
 
     <!-- Custom Bottom NavigationView style -->
     <style name="BottomNavStyle" parent="Widget.MaterialComponents.BottomNavigationView">
-        <item name="android:layout_height">50dp</item> <!-- shorter nav -->
+        <item name="android:layout_height">30dp</item>
         <item name="android:background">@color/colorPrimary</item>
     </style>
 

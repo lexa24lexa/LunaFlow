@@ -12,7 +12,16 @@
           "package_name": "com.example.lunaflow"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "907496106354-2r20f94gmrrb08harlktvgq27sis2c1v.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.lunaflow",
+            "certificate_hash": "576b84fa30abf4dea9046cbf580e4c92af8d7663"
+          }
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCGmG9zex3H4zgo2ZtNVImZccMAhucYWP8"

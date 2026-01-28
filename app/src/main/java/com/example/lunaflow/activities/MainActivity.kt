@@ -8,6 +8,7 @@ import android.view.Gravity
 import android.widget.GridLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.lunaflow.R
 import com.example.lunaflow.adapters.AdviceAdapter
@@ -42,6 +43,10 @@ class MainActivity : BaseActivity() {
         calendarDaysGrid = findViewById(R.id.calendarDaysGrid)
         calendarMonthYear = findViewById(R.id.calendarMonthYear)
 
+        adviceRecyclerView.layoutManager =
+            LinearLayoutManager(this, RecyclerView.VERTICAL, false)
+        adviceRecyclerView.setHasFixedSize(true)
+
         val btnLogChoice: FloatingActionButton = findViewById(R.id.btnLogChoice)
         btnLogChoice.setOnClickListener {
             startActivity(Intent(this, LogChoiceActivity::class.java))
@@ -55,9 +60,13 @@ class MainActivity : BaseActivity() {
         }
 
         val currentPhase = "Luteal"
-        val nextCycleDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 14) }.time
+        val nextCycleDate = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_MONTH, 14)
+        }.time
+
         val formatter = SimpleDateFormat("MMMM dd", Locale.ENGLISH)
-        nextCycleText.text = "Next cycle in 14 days, scheduled for ${formatter.format(nextCycleDate)}"
+        nextCycleText.text =
+            "Next cycle in 14 days, scheduled for ${formatter.format(nextCycleDate)}"
         currentPhaseText.text = "You are in $currentPhase Phase"
 
         fetchAdviceForPhase(currentPhase)
@@ -72,17 +81,26 @@ class MainActivity : BaseActivity() {
             .whereEqualTo("phase", phase)
             .get()
             .addOnSuccessListener { result ->
-                val advices = result.documents.mapNotNull { it.toObject(Advice::class.java) }
+                val advices = result.documents.mapNotNull {
+                    it.toObject(Advice::class.java)
+                }
+
                 val adviceToShow = if (advices.isNotEmpty()) {
                     val lastIndex = prefs.getInt("last_advice_index_$phase", 0)
-                    prefs.edit().putInt("last_advice_index_$phase", lastIndex + 1).apply()
+                    prefs.edit()
+                        .putInt("last_advice_index_$phase", lastIndex + 1)
+                        .apply()
                     advices[lastIndex % advices.size]
-                } else Advice(phase, "No advice available.")
+                } else {
+                    Advice(phase, "No advice available.")
+                }
 
-                adviceRecyclerView.adapter = AdviceAdapter(listOf(adviceToShow))
+                adviceRecyclerView.adapter =
+                    AdviceAdapter(listOf(adviceToShow))
             }
             .addOnFailureListener {
-                adviceRecyclerView.adapter = AdviceAdapter(listOf(Advice(phase, "Failed to load advice.")))
+                adviceRecyclerView.adapter =
+                    AdviceAdapter(listOf(Advice(phase, "Failed to load advice.")))
             }
     }
 

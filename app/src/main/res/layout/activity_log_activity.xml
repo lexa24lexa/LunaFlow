@@ -10,6 +10,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <!-- activity options -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -24,7 +25,7 @@
         <CheckBox android:id="@+id/birthControl" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Birth control"/>
         <CheckBox android:id="@+id/otherMedication" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Other medication"/>
 
-        <!-- Sex details -->
+        <!-- sex -->
         <LinearLayout
             android:id="@+id/sexOptionsLayout"
             android:layout_width="match_parent"
@@ -43,7 +44,7 @@
             <EditText android:id="@+id/sexDetails" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Details"/>
         </LinearLayout>
 
-        <!-- Plan B details -->
+        <!-- plan b -->
         <LinearLayout
             android:id="@+id/planBOptionsLayout"
             android:layout_width="match_parent"
@@ -60,9 +61,26 @@
                 <RadioButton android:id="@+id/lipristal" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Lipristal"/>
             </RadioGroup>
 
-            <EditText android:id="@+id/timeSinceIntercourse" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Time since intercourse"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Time since intercourse"/>
+
+            <Spinner
+                android:id="@+id/timeSinceIntercourseSpinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+
             <EditText android:id="@+id/planBDetails" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Details"/>
         </LinearLayout>
+
+        <!-- other medication -->
+        <Spinner
+            android:id="@+id/otherMedicationSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:layout_marginTop="4dp"/>
 
         <LinearLayout
             android:layout_width="match_parent"

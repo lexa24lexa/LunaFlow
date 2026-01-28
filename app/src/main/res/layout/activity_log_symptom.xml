@@ -10,6 +10,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <!-- physical symptoms options -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -25,6 +26,42 @@
         <CheckBox android:id="@+id/dizziness" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Dizziness"/>
         <CheckBox android:id="@+id/fatigue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Fatigue"/>
 
+        <!-- menstruation flow options -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Menstruation Flow"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
+        <RadioGroup
+            android:id="@+id/flowRadioGroup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/flowLight"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Light"/>
+
+            <RadioButton
+                android:id="@+id/flowMedium"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Medium"/>
+
+            <RadioButton
+                android:id="@+id/flowHeavy"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Heavy"/>
+        </RadioGroup>
+
+        <!-- emotional symptoms options -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -38,10 +75,11 @@
         <CheckBox android:id="@+id/anxiety" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Anxiety"/>
         <CheckBox android:id="@+id/irritability" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Irritability"/>
 
+        <!-- other symptoms -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Other symptoms"
+            android:text="Other Symptoms"
             android:textSize="18sp"
             android:textStyle="bold"
             android:layout_marginTop="16dp"
