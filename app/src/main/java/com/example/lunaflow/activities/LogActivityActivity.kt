@@ -1,13 +1,15 @@
 package com.example.lunaflow.activities
 
 import android.content.Intent
+import android.icu.text.SimpleDateFormat
 import android.os.Bundle
 import android.view.View
 import android.widget.*
 import com.example.lunaflow.R
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import java.util.Date
+import java.util.Locale
 
 class LogActivityActivity : BaseActivity() {
 
@@ -39,29 +41,18 @@ class LogActivityActivity : BaseActivity() {
         timeSinceSpinner.adapter = adapter
 
         // show/hide layouts
-        sexCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            sexLayout.visibility = if (isChecked) View.VISIBLE else View.GONE
-        }
+        sexCheckBox.setOnCheckedChangeListener { _, isChecked -> sexLayout.visibility = if (isChecked) View.VISIBLE else View.GONE }
+        planBCheckBox.setOnCheckedChangeListener { _, isChecked -> planBLayout.visibility = if (isChecked) View.VISIBLE else View.GONE }
+        otherMedCheckBox.setOnCheckedChangeListener { _, isChecked -> otherMedSpinner.visibility = if (isChecked) View.VISIBLE else View.GONE }
 
-        planBCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            planBLayout.visibility = if (isChecked) View.VISIBLE else View.GONE
-        }
-
-        otherMedCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            otherMedSpinner.visibility = if (isChecked) View.VISIBLE else View.GONE
-        }
-
-        // fetch medications from firebase
         fetchMedicationsFromFirebase()
 
-        // save/cancel buttons
         findViewById<Button>(R.id.saveButton).setOnClickListener { saveActivity() }
         findViewById<Button>(R.id.cancelButton).setOnClickListener { finish() }
     }
 
     private fun fetchMedicationsFromFirebase() {
-        FirebaseFirestore.getInstance().collection("medications")
-            .get()
+        FirebaseFirestore.getInstance().collection("medications").get()
             .addOnSuccessListener { docs ->
                 riskyMeds.clear()
                 for (doc in docs) {
@@ -71,48 +62,17 @@ class LogActivityActivity : BaseActivity() {
                 medAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                 otherMedSpinner.adapter = medAdapter
             }
-            .addOnFailureListener {
-                Toast.makeText(this, "Failed to load medications", Toast.LENGTH_SHORT).show()
-            }
     }
 
     private fun saveActivity() {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
+        val userId = auth.currentUser?.uid ?: return
+        val db = FirebaseFirestore.getInstance()
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
 
         val sexChecked = findViewById<CheckBox>(R.id.sex).isChecked
         val planBChecked = findViewById<CheckBox>(R.id.planBPill).isChecked
         val otherMedChecked = findViewById<CheckBox>(R.id.otherMedication).isChecked
 
-        // validate sex & plan B
-        if (sexChecked) {
-            val protectionYes = findViewById<RadioButton>(R.id.usedProtectionYes).isChecked
-            val protectionNo = findViewById<RadioButton>(R.id.usedProtectionNo).isChecked
-            if (!protectionYes && !protectionNo) {
-                Toast.makeText(this, "Please select if protection was used", Toast.LENGTH_SHORT).show()
-                return
-            }
-        }
-
-        if (planBChecked) {
-            val pillLevon = findViewById<RadioButton>(R.id.levonorgestrel).isChecked
-            val pillLipristal = findViewById<RadioButton>(R.id.lipristal).isChecked
-            if (!pillLevon && !pillLipristal) {
-                Toast.makeText(this, "Please select Plan B pill type", Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            if (timeSinceSpinner.selectedItem == null) {
-                Toast.makeText(this, "Please select time since intercourse", Toast.LENGTH_SHORT).show()
-                return
-            }
-        }
-
-        // activity data
         val activityData: MutableMap<String, Any> = hashMapOf(
             "sex" to sexChecked,
             "masturbation" to findViewById<CheckBox>(R.id.masturbation).isChecked,
@@ -127,43 +87,40 @@ class LogActivityActivity : BaseActivity() {
             activityData["sexDetails"] = findViewById<EditText>(R.id.sexDetails).text.toString().trim()
         }
 
-        if (planBChecked) {
-            val pillType = if (findViewById<RadioButton>(R.id.levonorgestrel).isChecked) "Levonorgestrel" else "Lipristal"
-            activityData["pillType"] = pillType
-            activityData["timeSinceIntercourse"] = timeSinceSpinner.selectedItem.toString()
-            activityData["planBDetails"] = findViewById<EditText>(R.id.planBDetails).text.toString().trim()
+        if (planBChecked && otherMedChecked && otherMedSpinner.adapter != null && otherMedSpinner.adapter.count > 0) {
+            activityData["otherMedication"] = otherMedSpinner.selectedItem.toString()
         }
 
-        if (otherMedChecked && otherMedSpinner.adapter != null && otherMedSpinner.adapter.count > 0) {
-            val selectedMed = otherMedSpinner.selectedItem.toString()
-            activityData["otherMedication"] = selectedMed
-
-            // alert if risky + birth control + unprotected sex
-            val sexNoProtection = sexChecked && findViewById<RadioButton>(R.id.usedProtectionNo).isChecked
-            if (findViewById<CheckBox>(R.id.birthControl).isChecked && sexNoProtection && riskyMeds.contains(selectedMed)) {
-                Toast.makeText(this, "Warning: This medication may reduce birth control effectiveness!", Toast.LENGTH_LONG).show()
-            }
-        }
-
-        // save information to firestore
+        // Salvar log de atividade
         val log = hashMapOf(
             "type" to "activity",
+            "userId" to userId,
             "timestamp" to FieldValue.serverTimestamp(),
-            "activity" to activityData,
-            "userId" to userId
+            "activity" to activityData
         )
+        db.collection("users").document(userId).collection("logs").add(log)
 
-        FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(userId)
-            .collection("logs")
-            .add(log)
-            .addOnSuccessListener {
-                Toast.makeText(this, "Activity saved", Toast.LENGTH_SHORT).show()
-                finish()
+        // Atualizar ou criar CycleRecord
+        val cycleRecordRef = db.collection("users").document(userId).collection("cycle_records").document(todayStr)
+        cycleRecordRef.get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                val updates = hashMapOf<String, Any>(
+                    "logs" to activityData
+                )
+                cycleRecordRef.update(updates)
+            } else {
+                val newRecord = hashMapOf(
+                    "date" to todayStr,
+                    "phase" to "luteal", // futuramente calculável
+                    "logs" to activityData,
+                    "symptoms" to mapOf<String, Boolean>(),
+                    "flow" to "None"
+                )
+                cycleRecordRef.set(newRecord)
             }
-            .addOnFailureListener {
-                Toast.makeText(this, "Error saving activity", Toast.LENGTH_SHORT).show()
-            }
+        }
+
+        Toast.makeText(this, "Activity saved", Toast.LENGTH_SHORT).show()
+        finish()
     }
 }

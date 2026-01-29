@@ -7,6 +7,8 @@ import com.example.lunaflow.R
 import com.example.lunaflow.models.LogType
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import java.text.SimpleDateFormat
+import java.util.*
 
 class LogSymptomActivity : BaseActivity() {
 
@@ -31,6 +33,8 @@ class LogSymptomActivity : BaseActivity() {
 
     private fun saveSymptoms() {
         val userId = auth.currentUser?.uid ?: return
+        val db = FirebaseFirestore.getInstance()
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
 
         val nausea = findViewById<CheckBox>(R.id.nausea).isChecked
         val headache = findViewById<CheckBox>(R.id.headache).isChecked
@@ -41,13 +45,10 @@ class LogSymptomActivity : BaseActivity() {
         val moodSwings = findViewById<CheckBox>(R.id.moodSwings).isChecked
         val anxiety = findViewById<CheckBox>(R.id.anxiety).isChecked
         val irritability = findViewById<CheckBox>(R.id.irritability).isChecked
+        val otherSymptomsText = findViewById<EditText>(R.id.otherSymptoms).text?.toString()?.trim() ?: ""
 
-        val otherSymptomsText =
-            findViewById<EditText>(R.id.otherSymptoms).text?.toString()?.trim() ?: ""
-
-        val anySymptomSelected =
-            nausea || headache || cramps || bloating || dizziness ||
-                    fatigue || moodSwings || anxiety || irritability || otherSymptomsText.isNotEmpty()
+        val anySymptomSelected = nausea || headache || cramps || bloating || dizziness ||
+                fatigue || moodSwings || anxiety || irritability || otherSymptomsText.isNotEmpty()
 
         val flowGroup = findViewById<RadioGroup>(R.id.flowRadioGroup)
         val flow = when (flowGroup.checkedRadioButtonId) {
@@ -58,11 +59,7 @@ class LogSymptomActivity : BaseActivity() {
         }
 
         if (!anySymptomSelected && flow == "None") {
-            Toast.makeText(
-                this,
-                "Please select at least one symptom or flow level",
-                Toast.LENGTH_SHORT
-            ).show()
+            Toast.makeText(this, "Please select at least one symptom or flow level", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -81,24 +78,38 @@ class LogSymptomActivity : BaseActivity() {
         val log = hashMapOf(
             "type" to LogType.symptoms,
             "userId" to userId,
-            "phase" to "luteal",
+            "phase" to "luteal", // futuramente calculável
             "flow" to flow,
             "timestamp" to FieldValue.serverTimestamp(),
             "symptoms" to symptoms,
             "otherSymptoms" to otherSymptomsText
         )
 
-        FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(userId)
-            .collection("logs")
-            .add(log)
-            .addOnSuccessListener {
-                Toast.makeText(this, "Symptoms saved", Toast.LENGTH_SHORT).show()
-                finish()
+        // Salvar log de sintomas
+        db.collection("users").document(userId).collection("logs").add(log)
+
+        // Atualizar ou criar CycleRecord
+        val cycleRecordRef = db.collection("users").document(userId).collection("cycle_records").document(todayStr)
+        cycleRecordRef.get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                val updates = hashMapOf<String, Any>(
+                    "symptoms" to symptoms,
+                    "flow" to flow
+                )
+                cycleRecordRef.update(updates)
+            } else {
+                val newRecord = hashMapOf(
+                    "date" to todayStr,
+                    "phase" to "luteal", // futuramente calculável
+                    "symptoms" to symptoms,
+                    "logs" to mapOf<String, Any>(),
+                    "flow" to flow
+                )
+                cycleRecordRef.set(newRecord)
             }
-            .addOnFailureListener {
-                Toast.makeText(this, "Error saving symptoms", Toast.LENGTH_SHORT).show()
-            }
+        }
+
+        Toast.makeText(this, "Symptoms saved", Toast.LENGTH_SHORT).show()
+        finish()
     }
 }

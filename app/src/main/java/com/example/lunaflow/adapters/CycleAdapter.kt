@@ -26,7 +26,12 @@ class CycleAdapter(
     override fun onBindViewHolder(holder: CycleViewHolder, position: Int) {
         val record = records[position]
         holder.tvDate.text = record.date
-        holder.tvSymptoms.text = record.symptoms
+
+        holder.tvSymptoms.text = if (record.symptoms.isNotEmpty()) {
+            record.symptoms.filter { it.value }.keys.joinToString(", ")
+        } else {
+            "No symptoms logged"
+        }
     }
 
     override fun getItemCount(): Int = records.size

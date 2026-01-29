@@ -17,8 +17,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:gravity="center_horizontal"
-            android:spacing="16dp">
+            android:gravity="center_horizontal">
 
             <!-- phase section -->
             <LinearLayout
@@ -31,7 +30,7 @@
                     android:id="@+id/currentPhase"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="You are in Luteal Phase"
+                    android:text="Loading..."
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:gravity="center" />
@@ -48,7 +47,7 @@
                         android:id="@+id/nextCycle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Next cycle in X days, scheduled for Month Y day Z"
+                        android:text="Loading..."
                         android:textSize="14sp"
                         android:gravity="center" />
                 </LinearLayout>
@@ -63,7 +62,6 @@
                 android:weightSum="2"
                 android:gravity="center">
 
-                <!-- phase advices -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -80,7 +78,6 @@
                         android:scrollbars="vertical"/>
                 </LinearLayout>
 
-                <!-- frequent symptoms -->
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/frequentSymptomRecyclerView"
                     android:layout_width="0dp"
@@ -102,7 +99,7 @@
                     android:id="@+id/calendarMonthYear"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="January 2026"
+                    android:text="Loading..."
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:layout_gravity="center_horizontal"
@@ -129,7 +126,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:columnCount="7"
-                    android:rowCount="6"
                     android:alignmentMode="alignMargins"
                     android:useDefaultMargins="true"/>
             </LinearLayout>
