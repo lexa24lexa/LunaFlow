@@ -1,167 +1,149 @@
-<androidx.core.widget.NestedScrollView
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:padding="16dp"
-    android:background="@color/white">
+    android:layout_height="match_parent">
 
-    <LinearLayout
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:spacing="16dp">
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:padding="16dp"
+        android:paddingBottom="70dp">
 
-        <!-- phase section -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:gravity="center_horizontal"
-            android:orientation="vertical">
+            android:spacing="16dp">
 
-            <TextView
-                android:id="@+id/currentPhase"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="You are in Luteal Phase"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/rounded_background"
-                android:gravity="center"
-                android:padding="12dp">
-
-                <TextView
-                    android:id="@+id/nextCycle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:text="Next cycle in X days, scheduled for Month Y day Z"
-                    android:textSize="14sp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- advices section -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:orientation="vertical">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginBottom="12dp"
-                android:text="Advices"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
+            <!-- phase section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="8dp"
-                android:layout_marginBottom="16dp"
-                android:gravity="center"
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
+
+                <TextView
+                    android:id="@+id/currentPhase"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="You are in Luteal Phase"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:gravity="center" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/rounded_background"
+                    android:gravity="center"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:id="@+id/nextCycle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Next cycle in X days, scheduled for Month Y day Z"
+                        android:textSize="14sp"
+                        android:gravity="center" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- advices section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:weightSum="2">
+                android:layout_marginTop="24dp"
+                android:weightSum="2"
+                android:gravity="center">
 
                 <!-- phase advices -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
                     android:layout_weight="1"
-                    android:background="@drawable/rounded_background"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:background="@drawable/rounded_background"
+                    android:padding="16dp"
+                    android:layout_marginEnd="8dp">
 
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/adviceRecyclerView"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginHorizontal="8dp"
-                        android:layout_marginBottom="16dp"
-                        android:scrollbars="vertical" />
+                        android:scrollbars="vertical"/>
                 </LinearLayout>
 
                 <!-- frequent symptoms -->
-                <LinearLayout
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/frequentSymptomRecyclerView"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
                     android:layout_weight="1"
                     android:background="@drawable/rounded_background"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Frequent symptom and what to do to relieve it"
-                        android:textSize="14sp" />
-                </LinearLayout>
+                    android:padding="16dp"
+                    android:scrollbars="vertical"/>
             </LinearLayout>
-        </LinearLayout>
 
-        <!-- calendar section -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/calendarMonthYear"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginBottom="8dp"
-                android:text="January 2026"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
+            <!-- calendar section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:gravity="center"
-                android:orientation="horizontal">
+                android:orientation="vertical"
+                android:layout_marginTop="24dp">
 
-                <TextView android:layout_width="0dp" android:layout_height="15pt" android:layout_weight="1" android:gravity="center" android:text="S" />
-                <TextView android:layout_width="0dp" android:layout_height="15pt" android:layout_weight="1" android:gravity="center" android:text="M" />
-                <TextView android:layout_width="0dp" android:layout_height="15pt" android:layout_weight="1" android:gravity="center" android:text="T" />
-                <TextView android:layout_width="0dp" android:layout_height="15pt" android:layout_weight="1" android:gravity="center" android:text="W" />
-                <TextView android:layout_width="0dp" android:layout_height="15pt" android:layout_weight="1" android:gravity="center" android:text="T" />
-                <TextView android:layout_width="0dp" android:layout_height="15pt" android:layout_weight="1" android:gravity="center" android:text="F" />
-                <TextView android:layout_width="0dp" android:layout_height="15pt" android:layout_weight="1" android:gravity="center" android:text="S" />
+                <TextView
+                    android:id="@+id/calendarMonthYear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="January 2026"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginBottom="8dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="S"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="M"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="T"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="W"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="T"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="F"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="S"/>
+                </LinearLayout>
+
+                <GridLayout
+                    android:id="@+id/calendarDaysGrid"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="7"
+                    android:rowCount="6"
+                    android:alignmentMode="alignMargins"
+                    android:useDefaultMargins="true"/>
             </LinearLayout>
-
-            <GridLayout
-                android:id="@+id/calendarDaysGrid"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:alignmentMode="alignMargins"
-                android:columnCount="7"
-                android:rowCount="6"
-                android:useDefaultMargins="true" />
         </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 
-        <!-- add button -->
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btnLogChoice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="16dp"
-            android:layout_gravity="bottom|end"
-            android:contentDescription="Go to Log Choice"
-            android:src="@drawable/ic_add"
-            app:backgroundTint="@color/mainRed" />
-    </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+    <!-- add button -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnLogChoice"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Go to Log Choice"
+        app:backgroundTint="@color/mainRed"/>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

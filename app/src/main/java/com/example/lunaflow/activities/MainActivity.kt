@@ -12,9 +12,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.lunaflow.R
 import com.example.lunaflow.adapters.AdviceAdapter
-import com.example.lunaflow.models.Advice
+import com.example.lunaflow.adapters.SymptomAdviceAdapter
+import com.example.lunaflow.models.UserLog
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
@@ -26,6 +26,8 @@ class MainActivity : BaseActivity() {
     private lateinit var adviceRecyclerView: RecyclerView
     private lateinit var calendarDaysGrid: GridLayout
     private lateinit var calendarMonthYear: TextView
+    private lateinit var frequentSymptomRecyclerView: RecyclerView
+    private val db = FirebaseFirestore.getInstance()
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,73 +41,182 @@ class MainActivity : BaseActivity() {
 
         setContentLayout(R.layout.activity_main)
         setToolbarTitle("LunaFlow")
-        setupBottomNav(R.id.nav_home)
         showToolbar(true)
         showBottomNav(true)
+        setupBottomNav(R.id.nav_home)
 
         currentPhaseText = findViewById(R.id.currentPhase)
         nextCycleText = findViewById(R.id.nextCycle)
         adviceRecyclerView = findViewById(R.id.adviceRecyclerView)
         calendarDaysGrid = findViewById(R.id.calendarDaysGrid)
         calendarMonthYear = findViewById(R.id.calendarMonthYear)
+        frequentSymptomRecyclerView = findViewById(R.id.frequentSymptomRecyclerView)
 
-        adviceRecyclerView.layoutManager =
-            LinearLayoutManager(this, RecyclerView.VERTICAL, false)
+        adviceRecyclerView.layoutManager = LinearLayoutManager(this)
         adviceRecyclerView.setHasFixedSize(true)
+
+        frequentSymptomRecyclerView.layoutManager = LinearLayoutManager(this)
+        frequentSymptomRecyclerView.setHasFixedSize(true)
 
         findViewById<FloatingActionButton>(R.id.btnLogChoice).setOnClickListener {
             startActivity(Intent(this, LogChoiceActivity::class.java))
         }
 
         val currentPhase = "Luteal"
-        val nextCycleDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 14) }.time
-        nextCycleText.text = "Next cycle in 14 days, scheduled for ${
-            SimpleDateFormat("MMMM dd", Locale.ENGLISH).format(nextCycleDate)
-        }"
+        val nextCycleDate = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_MONTH, 14)
+        }.time
+
         currentPhaseText.text = "You are in $currentPhase Phase"
+        nextCycleText.text =
+            "Next cycle in 14 days, scheduled for ${
+                SimpleDateFormat("MMMM dd", Locale.ENGLISH).format(nextCycleDate)
+            }"
 
         fetchAdviceForPhase(currentPhase)
+        fetchFrequentSymptoms(currentPhase)
         setupCalendar()
     }
 
     private fun fetchAdviceForPhase(phase: String) {
-        val db = FirebaseFirestore.getInstance()
         val prefs = getSharedPreferences("advice_prefs", MODE_PRIVATE)
 
         db.collection("advices")
             .whereEqualTo("phase", phase)
             .get()
             .addOnSuccessListener { result ->
-                val advices = result.documents.mapNotNull { it.toObject(Advice::class.java) }
+                val advices = result.documents.mapNotNull {
+                    it.toObject(com.example.lunaflow.models.Advice::class.java)
+                }
+
                 val adviceToShow = if (advices.isNotEmpty()) {
                     val lastIndex = prefs.getInt("last_advice_index_$phase", 0)
-                    prefs.edit().putInt("last_advice_index_$phase", lastIndex + 1).apply()
+                    prefs.edit()
+                        .putInt("last_advice_index_$phase", lastIndex + 1)
+                        .apply()
                     advices[lastIndex % advices.size]
-                } else Advice(phase, "No advice available.")
-                adviceRecyclerView.adapter = AdviceAdapter(listOf(adviceToShow))
+                } else {
+                    com.example.lunaflow.models.Advice(
+                        phase,
+                        "No advice available."
+                    )
+                }
+
+                adviceRecyclerView.adapter =
+                    AdviceAdapter(listOf(adviceToShow))
             }
             .addOnFailureListener {
-                adviceRecyclerView.adapter = AdviceAdapter(listOf(Advice(phase, "Failed to load advice.")))
+                adviceRecyclerView.adapter =
+                    AdviceAdapter(
+                        listOf(
+                            com.example.lunaflow.models.Advice(
+                                phase,
+                                "Failed to load advice."
+                            )
+                        )
+                    )
+            }
+    }
+
+    private fun fetchFrequentSymptoms(phase: String) {
+        val currentUser = auth.currentUser ?: return
+
+        db.collection("users")
+            .document(currentUser.uid)
+            .collection("logs")
+            .whereEqualTo("type", "symptoms")
+            .get()
+            .addOnSuccessListener { result ->
+                val logs = result.documents.mapNotNull {
+                    it.toObject(UserLog::class.java)
+                }
+
+                val symptomFrequency = mutableMapOf<String, Int>()
+
+                logs.forEach { log ->
+                    log.symptoms.forEach { (symptom, hasSymptom) ->
+                        if (hasSymptom) {
+                            val key = symptom.lowercase()
+                            symptomFrequency[key] =
+                                symptomFrequency.getOrDefault(key, 0) + 1
+                        }
+                    }
+                }
+
+                if (symptomFrequency.isEmpty()) {
+                    frequentSymptomRecyclerView.adapter =
+                        SymptomAdviceAdapter(
+                            listOf("No symptoms logged yet.")
+                        )
+                    return@addOnSuccessListener
+                }
+
+                val symptomAdvices = mutableListOf<String>()
+
+                symptomFrequency.keys.forEach { symptom ->
+                    getSymptomAdvice(phase, symptom) { advice ->
+                        symptomAdvices.add(
+                            "Symptom: ${
+                                symptom.replaceFirstChar { it.uppercase() }
+                            }\nAdvice: $advice"
+                        )
+                        frequentSymptomRecyclerView.adapter =
+                            SymptomAdviceAdapter(symptomAdvices)
+                    }
+                }
+            }
+            .addOnFailureListener {
+                frequentSymptomRecyclerView.adapter =
+                    SymptomAdviceAdapter(
+                        listOf("Failed to load symptoms.")
+                    )
+            }
+    }
+
+    private fun getSymptomAdvice(
+        phase: String,
+        symptom: String,
+        callback: (String) -> Unit
+    ) {
+        db.collection("symptom_advices")
+            .whereEqualTo("phase", phase.lowercase())
+            .whereEqualTo("symptom", symptom.lowercase())
+            .get()
+            .addOnSuccessListener { result ->
+                val advice = if (result.documents.isNotEmpty()) {
+                    result.documents[0].getString("advice")
+                        ?: "No advice available."
+                } else {
+                    "No advice available."
+                }
+                callback(advice)
+            }
+            .addOnFailureListener {
+                callback("No advice available.")
             }
     }
 
     private fun setupCalendar() {
         val calendar = Calendar.getInstance()
-        calendarMonthYear.text = SimpleDateFormat("MMMM yyyy", Locale.ENGLISH).format(calendar.time)
+        calendarMonthYear.text =
+            SimpleDateFormat("MMMM yyyy", Locale.ENGLISH)
+                .format(calendar.time)
+
         calendarDaysGrid.removeAllViews()
 
         val tempCal = calendar.clone() as Calendar
         tempCal.set(Calendar.DAY_OF_MONTH, 1)
         val firstDayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK)
-        val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val daysInMonth =
+            calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
 
-        // blank spaces
         for (i in 1 until firstDayOfWeek) {
             val blankView = TextView(this)
             blankView.layoutParams = GridLayout.LayoutParams().apply {
                 width = 0
                 height = GridLayout.LayoutParams.WRAP_CONTENT
-                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                columnSpec =
+                    GridLayout.spec(GridLayout.UNDEFINED, 1f)
             }
             calendarDaysGrid.addView(blankView)
         }
@@ -118,22 +229,32 @@ class MainActivity : BaseActivity() {
                 setBackgroundResource(R.drawable.rounded_background)
 
                 val today = Calendar.getInstance()
-                if (calendar.get(Calendar.MONTH) == today.get(Calendar.MONTH)
-                    && day == today.get(Calendar.DAY_OF_MONTH)
+                if (
+                    calendar.get(Calendar.MONTH) ==
+                    today.get(Calendar.MONTH) &&
+                    day == today.get(Calendar.DAY_OF_MONTH)
                 ) {
                     setBackgroundColor(Color.parseColor("#C1492E"))
                     setTextColor(Color.WHITE)
                 }
 
-                setOnClickListener { Toast.makeText(context, "Clicked on day $day", Toast.LENGTH_SHORT).show() }
+                setOnClickListener {
+                    Toast.makeText(
+                        context,
+                        "Clicked on day $day",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
 
                 layoutParams = GridLayout.LayoutParams().apply {
                     width = 0
                     height = GridLayout.LayoutParams.WRAP_CONTENT
-                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                    columnSpec =
+                        GridLayout.spec(GridLayout.UNDEFINED, 1f)
                     setMargins(4, 4, 4, 4)
                 }
             }
+
             calendarDaysGrid.addView(dayView)
         }
     }

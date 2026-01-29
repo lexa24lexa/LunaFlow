@@ -69,6 +69,8 @@ abstract class BaseActivity : AppCompatActivity() {
             }
         }
 
+        bottomNav.menu.setGroupCheckable(0, true, true)
+
         if (selectedItemId != null) {
             bottomNav.selectedItemId = selectedItemId
         } else {

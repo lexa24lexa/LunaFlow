@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.lunaflow.R
 import com.example.lunaflow.adapters.HistoryAdapter
-import com.example.lunaflow.data.HistoryItem
+import com.example.lunaflow.models.HistoryItem
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query

@@ -1,4 +1,4 @@
-package com.example.lunaflow.data
+package com.example.lunaflow.models
 
 object LogType {
     const val symptoms = "symptoms"

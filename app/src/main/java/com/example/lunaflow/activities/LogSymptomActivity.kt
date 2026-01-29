@@ -4,7 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.*
 import com.example.lunaflow.R
-import com.google.firebase.auth.FirebaseAuth
+import com.example.lunaflow.models.LogType
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -30,12 +30,7 @@ class LogSymptomActivity : BaseActivity() {
     }
 
     private fun saveSymptoms() {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
+        val userId = auth.currentUser?.uid ?: return
 
         val nausea = findViewById<CheckBox>(R.id.nausea).isChecked
         val headache = findViewById<CheckBox>(R.id.headache).isChecked
@@ -46,20 +41,32 @@ class LogSymptomActivity : BaseActivity() {
         val moodSwings = findViewById<CheckBox>(R.id.moodSwings).isChecked
         val anxiety = findViewById<CheckBox>(R.id.anxiety).isChecked
         val irritability = findViewById<CheckBox>(R.id.irritability).isChecked
-        val otherSymptomsText = findViewById<EditText>(R.id.otherSymptoms).text?.toString()?.trim() ?: ""
 
-        val anySymptomSelected = nausea || headache || cramps || bloating || dizziness || fatigue ||
-                moodSwings || anxiety || irritability || otherSymptomsText.isNotEmpty()
+        val otherSymptomsText =
+            findViewById<EditText>(R.id.otherSymptoms).text?.toString()?.trim() ?: ""
+
+        val anySymptomSelected =
+            nausea || headache || cramps || bloating || dizziness ||
+                    fatigue || moodSwings || anxiety || irritability || otherSymptomsText.isNotEmpty()
 
         val flowGroup = findViewById<RadioGroup>(R.id.flowRadioGroup)
-        val flowSelected = flowGroup.checkedRadioButtonId != -1
+        val flow = when (flowGroup.checkedRadioButtonId) {
+            R.id.flowLight -> "Light"
+            R.id.flowMedium -> "Medium"
+            R.id.flowHeavy -> "Heavy"
+            else -> "None"
+        }
 
-        if (!anySymptomSelected && !flowSelected) {
-            Toast.makeText(this, "Please select at least one symptom or flow level", Toast.LENGTH_SHORT).show()
+        if (!anySymptomSelected && flow == "None") {
+            Toast.makeText(
+                this,
+                "Please select at least one symptom or flow level",
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
 
-        val symptoms = hashMapOf(
+        val symptoms: Map<String, Boolean> = mapOf(
             "nausea" to nausea,
             "headache" to headache,
             "cramps" to cramps,
@@ -68,22 +75,17 @@ class LogSymptomActivity : BaseActivity() {
             "fatigue" to fatigue,
             "moodSwings" to moodSwings,
             "anxiety" to anxiety,
-            "irritability" to irritability,
-            "otherSymptoms" to otherSymptomsText
+            "irritability" to irritability
         )
 
-        val flow = when (flowGroup.checkedRadioButtonId) {
-            R.id.flowLight -> "Light"
-            R.id.flowMedium -> "Medium"
-            R.id.flowHeavy -> "Heavy"
-            else -> "None"
-        }
-
         val log = hashMapOf(
-            "type" to "symptoms",
-            "timestamp" to FieldValue.serverTimestamp(),
+            "type" to LogType.symptoms,
+            "userId" to userId,
+            "phase" to "luteal",
             "flow" to flow,
-            "symptoms" to symptoms
+            "timestamp" to FieldValue.serverTimestamp(),
+            "symptoms" to symptoms,
+            "otherSymptoms" to otherSymptomsText
         )
 
         FirebaseFirestore.getInstance()

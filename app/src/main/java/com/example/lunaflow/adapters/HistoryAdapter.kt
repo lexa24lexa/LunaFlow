@@ -8,7 +8,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.lunaflow.R
-import com.example.lunaflow.data.HistoryItem
+import com.example.lunaflow.models.HistoryItem
 
 class HistoryAdapter(private var items: List<HistoryItem>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {

@@ -149,7 +149,8 @@ class LogActivityActivity : BaseActivity() {
         val log = hashMapOf(
             "type" to "activity",
             "timestamp" to FieldValue.serverTimestamp(),
-            "activity" to activityData
+            "activity" to activityData,
+            "userId" to userId
         )
 
         FirebaseFirestore.getInstance()
