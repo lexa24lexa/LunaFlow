@@ -2,7 +2,9 @@ package com.example.lunaflow.activities
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
@@ -10,6 +12,7 @@ import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -24,6 +27,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.core.content.edit
+import com.example.lunaflow.utils.NotificationHelper
+import android.Manifest
 
 class MainActivity : BaseActivity() {
 
@@ -38,6 +43,15 @@ class MainActivity : BaseActivity() {
     private var cachedCycleRecords: List<CycleRecord> = emptyList()
 
     private var displayedCalendar = Calendar.getInstance()
+
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            if (isGranted) {
+                sendAllNotifications()
+            } else {
+                // Permission denied
+            }
+        }
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,6 +98,31 @@ class MainActivity : BaseActivity() {
 
         // Fetch cycle records and populate UI
         fetchCycleRecordsAndSetupCalendar()
+
+        NotificationHelper.createNotificationChannel(this)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    sendAllNotifications()
+                }
+                else -> {
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        } else {
+            sendAllNotifications()
+        }
+    }
+
+    private fun sendAllNotifications() {
+        NotificationHelper.createNotificationChannel(this)
+        NotificationHelper.sendNotification(this, "Your period is late")
+        NotificationHelper.sendNotification(this, "Period in 3 days")
+        NotificationHelper.sendNotification(this, "Cycle is 3-8 days, looks normal")
     }
 
     // ---------------- FETCH CYCLE RECORDS ----------------

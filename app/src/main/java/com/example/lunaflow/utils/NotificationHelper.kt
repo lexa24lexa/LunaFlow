@@ -1,0 +1,78 @@
+package com.example.lunaflow.utils
+
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import com.example.lunaflow.R
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+
+object NotificationHelper {
+
+    private const val CHANNEL_ID = "lunaflow_channel"
+    private var notificationId = 0
+    private val auth = FirebaseAuth.getInstance()
+
+    // ---------------- CREATE CHANNEL ----------------
+    fun createNotificationChannel(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "LunaFlow Notifications"
+            val descriptionText = "Notifications for menstrual cycle alerts"
+            val importance = android.app.NotificationManager.IMPORTANCE_DEFAULT
+            val channel = android.app.NotificationChannel(CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    // ---------------- SEND NOTIFICATION ----------------
+    fun sendNotification(context: Context, message: String) {
+        // Checa permissão no Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.w("NotificationHelper", "Notification permission not granted")
+                return
+            }
+        }
+
+        // Envia notificação local
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("LunaFlow Alert")
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+        with(NotificationManagerCompat.from(context)) {
+            notify(notificationId++, builder.build())
+        }
+
+        // Salva no Firestore (geral)
+        val db = FirebaseFirestore.getInstance()
+        val notificationMap = hashMapOf(
+            "message" to message,
+            "timestamp" to System.currentTimeMillis()
+        )
+        db.collection("notifications").add(notificationMap)
+
+        // Salva no Firestore do usuário (se estiver logado)
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            db.collection("users")
+                .document(currentUser.uid)
+                .collection("notifications")
+                .add(notificationMap)
+                .addOnSuccessListener { Log.d("NotificationHelper", "Notification saved for user") }
+                .addOnFailureListener { e -> Log.e("NotificationHelper", "Failed to save notification", e) }
+        }
+    }
+}
