@@ -32,44 +32,49 @@ import android.Manifest
 
 class MainActivity : BaseActivity() {
 
+    // views principais
     private lateinit var currentPhaseText: TextView
     private lateinit var nextCycleText: TextView
     private lateinit var adviceRecyclerView: RecyclerView
     private lateinit var calendarDaysGrid: GridLayout
     private lateinit var calendarMonthYear: TextView
     private lateinit var frequentSymptomRecyclerView: RecyclerView
+
+    // firestore
     private val db = FirebaseFirestore.getInstance()
 
+    // registros de ciclo cacheados
     private var cachedCycleRecords: List<CycleRecord> = emptyList()
 
+    // mês exibido no calendário
     private var displayedCalendar = Calendar.getInstance()
 
+    // launcher para pedir permissão de notificações
     private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                sendAllNotifications()
-            } else {
-                // Permission denied
-            }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) sendAllNotifications()
         }
 
+    // inicializa activity
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // checa login
         if (auth.currentUser == null) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
         }
 
+        // layout e toolbar
         setContentLayout(R.layout.activity_main)
         setToolbarTitle("LunaFlow")
         showToolbar(true)
         showBottomNav(true)
         setupBottomNav(R.id.nav_home)
 
-        // Bind views
+        // bind views
         currentPhaseText = findViewById(R.id.currentPhase)
         nextCycleText = findViewById(R.id.nextCycle)
         adviceRecyclerView = findViewById(R.id.adviceRecyclerView)
@@ -77,58 +82,54 @@ class MainActivity : BaseActivity() {
         calendarMonthYear = findViewById(R.id.calendarMonthYear)
         frequentSymptomRecyclerView = findViewById(R.id.frequentSymptomRecyclerView)
 
+        // setup recycler views
         adviceRecyclerView.layoutManager = LinearLayoutManager(this)
         adviceRecyclerView.setHasFixedSize(true)
         frequentSymptomRecyclerView.layoutManager = LinearLayoutManager(this)
         frequentSymptomRecyclerView.setHasFixedSize(true)
 
+        // botão log
         findViewById<FloatingActionButton>(R.id.btnLogChoice).setOnClickListener {
             startActivity(Intent(this, LogChoiceActivity::class.java))
         }
 
+        // botão mês anterior
         findViewById<ImageButton>(R.id.btnPrevMonth).setOnClickListener {
             displayedCalendar.add(Calendar.MONTH, -1)
             setupCalendar()
         }
 
+        // botão próximo mês
         findViewById<ImageButton>(R.id.btnNextMonth).setOnClickListener {
             displayedCalendar.add(Calendar.MONTH, 1)
             setupCalendar()
         }
 
-        // Fetch cycle records and populate UI
+        // busca registros e setup calendário
         fetchCycleRecordsAndSetupCalendar()
 
+        // cria canal de notificações
         NotificationHelper.createNotificationChannel(this)
 
+        // checa permissão notificações
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when {
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    sendAllNotifications()
-                }
-                else -> {
-                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-        } else {
-            sendAllNotifications()
-        }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED
+            ) sendAllNotifications()
+            else requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else sendAllNotifications()
     }
 
+    // envia notificações
     private fun sendAllNotifications() {
-        NotificationHelper.createNotificationChannel(this)
         NotificationHelper.sendNotification(this, "Your period is late")
         NotificationHelper.sendNotification(this, "Period in 3 days")
         NotificationHelper.sendNotification(this, "Cycle is 3-8 days, looks normal")
     }
 
-    // ---------------- FETCH CYCLE RECORDS ----------------
+    // busca registros do firestore
     private fun fetchCycleRecordsAndSetupCalendar() {
         val currentUser = auth.currentUser ?: return
-        Log.d("DEBUG", "Current UID: ${currentUser.uid}")
 
         db.collection("users")
             .document(currentUser.uid)
@@ -139,8 +140,7 @@ class MainActivity : BaseActivity() {
                     try { doc.toObject(CycleRecord::class.java) } catch (e: Exception) { null }
                 }.sortedBy { it.date }
 
-                cachedCycleRecords.forEach { Log.d("DEBUG", "CycleRecord: date=${it.date}, phase=${it.phase}, flow=${it.flow}, manual=${it.isManual}") }
-
+                // atualiza fase e calendário
                 handleCurrentPhaseAndNextCycle()
                 setupCalendar()
             }
@@ -149,7 +149,7 @@ class MainActivity : BaseActivity() {
             }
     }
 
-    // ---------------- CURRENT PHASE + NEXT CYCLE ----------------
+    // calcula fase atual e próximo ciclo
     private fun handleCurrentPhaseAndNextCycle() {
         if (cachedCycleRecords.isEmpty()) {
             currentPhaseText.text = "No cycle data yet"
@@ -160,7 +160,9 @@ class MainActivity : BaseActivity() {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
         val today = sdf.parse(sdf.format(Date())) ?: return
 
+        // registros menstruais manuais
         val menstruationRecords = cachedCycleRecords.filter { it.phase.lowercase() == "menstruation" && it.isManual }
+
         var start: Date? = null
         var end: Date? = null
         var duration = 0
@@ -181,8 +183,7 @@ class MainActivity : BaseActivity() {
             }
         }
 
-        val manualMenstruation = cachedCycleRecords.lastOrNull { it.phase.lowercase() == "menstruation" && it.isManual }
-// ---------------- CALCULO DE MENSTRUACAO ----------------
+        // checa se menstruando hoje
         val isMenstruating = menstruationRecords.any { record ->
             val recordDate = sdf.parse(record.date) ?: return@any false
             val flowDuration = when (record.flow?.lowercase()) {
@@ -195,14 +196,15 @@ class MainActivity : BaseActivity() {
             !today.before(recordDate) && !today.after(endDate)
         }
 
+        // define fase atual
         val currentPhase = if (isMenstruating) "Menstruation" else resolvePhaseForDate(sdf.format(today))
-        Log.d("DEBUG", "Current phase calculated: $currentPhase")
-
         currentPhaseText.text = "You are in $currentPhase Phase"
 
+        // busca conselhos e sintomas
         fetchAdviceForPhase(currentPhase)
         fetchFrequentSymptoms(currentPhase)
 
+        // calcula próximo ciclo
         if (start != null) {
             val cal = Calendar.getInstance().apply { time = start; add(Calendar.DAY_OF_MONTH, 28) }
             val daysLeft = ((cal.timeInMillis - Calendar.getInstance().timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
@@ -213,7 +215,7 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    // ---------------- CALENDAR ----------------
+    // setup calendário
     private fun setupCalendar() {
         val calendar = displayedCalendar.clone() as Calendar
         val year = calendar.get(Calendar.YEAR)
@@ -227,7 +229,7 @@ class MainActivity : BaseActivity() {
         val firstDayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK)
         val daysInMonth = tempCal.getActualMaximum(Calendar.DAY_OF_MONTH)
 
-        // Espaços em branco antes do primeiro dia
+        // espaços antes do primeiro dia
         for (i in 1 until firstDayOfWeek) {
             val blankView = TextView(this)
             blankView.layoutParams = GridLayout.LayoutParams().apply {
@@ -240,6 +242,7 @@ class MainActivity : BaseActivity() {
 
         val recordsMap = cachedCycleRecords.associateBy { it.date }
 
+        // adiciona dias
         for (day in 1..daysInMonth) {
             val dateStr = String.format("%04d-%02d-%02d", year, month + 1, day)
             val record = recordsMap[dateStr]
@@ -259,14 +262,14 @@ class MainActivity : BaseActivity() {
                 gravity = Gravity.CENTER
                 setPadding(16, 16, 16, 16)
 
-                // Fundo arredondado independente para cada dia
+                // fundo arredondado
                 val bg = ContextCompat.getDrawable(context, R.drawable.rounded_background)?.mutate()
                 background = bg
                 bg?.setTint(dayPhaseColor)
 
                 setTextColor(ContextCompat.getColor(context, R.color.colorPrimary))
 
-                // Destaca o dia de hoje
+                // destaca dia atual
                 val today = Calendar.getInstance()
                 if (calendar.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
                     calendar.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
@@ -290,22 +293,19 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    // ---------------- PHASE RESOLUTION ----------------
-    // ---------------- PHASE RESOLUTION ----------------
+    // resolve fase para data
     private fun resolvePhaseForDate(dateStr: String): String {
         cachedCycleRecords.find { it.date == dateStr && it.isManual }?.let { return it.phase }
 
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
         val date = sdf.parse(dateStr) ?: return "Unknown"
 
-        // Pega todos os registros manuais de menstruação anteriores à data
         val menstruationRecords = cachedCycleRecords.filter {
             it.phase.lowercase() == "menstruation" && it.isManual && it.date <= dateStr
         }.sortedByDescending { it.date }
 
         if (menstruationRecords.isEmpty()) return "Unknown"
 
-        // Procura o ciclo mais próximo anterior
         val lastMenstruation = menstruationRecords.first()
         val start = sdf.parse(lastMenstruation.date) ?: return "Unknown"
         val diffDays = ((date.time - start.time) / (1000 * 60 * 60 * 24)).toInt()
@@ -319,10 +319,9 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    // ---------------- FETCH ADVICE ----------------
+    // busca conselho para fase
     private fun fetchAdviceForPhase(phase: String) {
         val prefs = getSharedPreferences("advice_prefs", MODE_PRIVATE)
-        Log.d("DEBUG", "Fetching advices for phase: $phase")
 
         db.collection("advices")
             .whereEqualTo("phase", phase.replaceFirstChar { it.uppercase() })
@@ -343,7 +342,7 @@ class MainActivity : BaseActivity() {
             }
     }
 
-    // ---------------- FETCH FREQUENT SYMPTOMS ----------------
+    // busca sintomas frequentes
     private fun fetchFrequentSymptoms(phase: String) {
         val currentUser = auth.currentUser ?: return
 
@@ -356,10 +355,7 @@ class MainActivity : BaseActivity() {
 
                 logs.forEach { log ->
                     log.symptoms.forEach { (symptom, hasSymptom) ->
-                        if (hasSymptom) {
-                            val key = symptom.lowercase()
-                            symptomFrequency[key] = symptomFrequency.getOrDefault(key, 0) + 1
-                        }
+                        if (hasSymptom) symptomFrequency[symptom.lowercase()] = symptomFrequency.getOrDefault(symptom.lowercase(), 0) + 1
                     }
                 }
 
@@ -381,7 +377,7 @@ class MainActivity : BaseActivity() {
             }
     }
 
-    // ---------------- GET SYMPTOM ADVICE ----------------
+    // busca conselho de sintoma
     private fun getSymptomAdvice(phase: String, symptom: String, callback: (String) -> Unit) {
         db.collection("symptom_advices")
             .whereEqualTo("phase", phase.lowercase())
@@ -394,7 +390,7 @@ class MainActivity : BaseActivity() {
             .addOnFailureListener { callback("No advice available.") }
     }
 
-    // ---------------- BOTTOM SHEET ----------------
+    // bottom sheet detalhes do dia
     private fun showDayBottomSheet(dateStr: String, record: CycleRecord?) {
         val bottomSheet = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.bottomsheet_day_details, null)
@@ -404,35 +400,27 @@ class MainActivity : BaseActivity() {
         val symptomsText = view.findViewById<TextView>(R.id.bottomSheetSymptoms)
 
         if (record != null) {
-            // Phase
+            // fase
             phaseText.text = "Phase: ${record.phase}"
 
-            // Activity Logs
+            // atividades
             val activityLogs = record.logs.filter { it.value == true && it.key != "flow" && it.key != "otherSymptoms" }
                 .keys.map { it.replaceFirstChar { c -> c.uppercase() } }
             logsText.text = if (activityLogs.isNotEmpty()) activityLogs.joinToString("\n") else "No activity logs"
 
-            // Symptoms + Flow
+            // sintomas e fluxo
             val activeSymptoms = record.symptoms.filter { it.value }.keys.map { it.replaceFirstChar { c -> c.uppercase() } }
             val symptomOutput = mutableListOf<String>()
 
-            // FLOW: only display if Light, Medium, or Heavy
             val flowFromRecord = record.flow
             val flowFromLogs = record.logs["flow"] as? String
             val validFlows = listOf("Light", "Medium", "Heavy")
-            val flowToShow = flowFromRecord.takeIf { it in validFlows }
-                ?: flowFromLogs.takeIf { it in validFlows }
+            val flowToShow = flowFromRecord.takeIf { it in validFlows } ?: flowFromLogs.takeIf { it in validFlows }
+            flowToShow?.let { symptomOutput.add("Flow: $it") }
 
-            flowToShow?.let {
-                symptomOutput.add("Flow: $it")
-            }
-
-            if (activeSymptoms.isNotEmpty()) {
-                symptomOutput.add("Symptoms: ${activeSymptoms.joinToString(", ")}")
-            }
+            if (activeSymptoms.isNotEmpty()) symptomOutput.add("Symptoms: ${activeSymptoms.joinToString(", ")}")
 
             symptomsText.text = if (symptomOutput.isNotEmpty()) symptomOutput.joinToString("\n") else "No symptoms"
-
         } else {
             phaseText.text = "No record for this day"
             logsText.text = ""

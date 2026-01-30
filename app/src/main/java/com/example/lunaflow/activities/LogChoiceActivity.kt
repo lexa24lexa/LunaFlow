@@ -7,6 +7,7 @@ import com.example.lunaflow.R
 
 class LogChoiceActivity : BaseActivity() {
 
+    // inicializa activity e define clique dos botoes
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

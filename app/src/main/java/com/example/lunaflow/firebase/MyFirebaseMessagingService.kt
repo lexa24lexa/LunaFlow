@@ -20,13 +20,14 @@ import com.google.firebase.messaging.RemoteMessage
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
+    // recebe mensagem push do firebase
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
 
         val title = remoteMessage.notification?.title ?: "LunaFlow"
         val message = remoteMessage.notification?.body ?: ""
 
-        // Salvar no Firestore
+        // guarda notificação no firestore
         val db = FirebaseFirestore.getInstance()
         val data = hashMapOf(
             "message" to message,
@@ -34,25 +35,27 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         )
         db.collection("notifications").add(data)
 
-        // Disparar notificação local (checa permissão)
+        // dispara notificação local
         sendNotification(title, message)
     }
 
+    // cria e envia notificação local
     private fun sendNotification(title: String, message: String) {
-        // Verifica permissão runtime Android 13+
+        // verifica permissão android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.POST_NOTIFICATIONS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            Log.w("FCM_NOTIF", "Permissão POST_NOTIFICATIONS não concedida")
+            Log.w("FCM_NOTIF", "permissão post_notifications não concedida")
             return
         }
 
         val channelId = "lunaFlow_channel_id"
         createNotificationChannel(channelId)
 
+        // abre main activity ao clicar
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -71,30 +74,31 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
-        with(NotificationManagerCompat.from(this)) {
-            notify(System.currentTimeMillis().toInt(), builder.build())
-        }
+        NotificationManagerCompat.from(this)
+            .notify(System.currentTimeMillis().toInt(), builder.build())
     }
 
+    // cria canal de notificações
     private fun createNotificationChannel(channelId: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "LunaFlowChannel"
-            val descriptionText = "Channel for LunaFlow notifications"
+            val descriptionText = "channel for lunaflow notifications"
             val importance = NotificationManager.IMPORTANCE_DEFAULT
             val channel = NotificationChannel(channelId, name, importance).apply {
                 description = descriptionText
             }
-            val notificationManager: NotificationManager =
+            val notificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
     }
 
+    // chamado quando um novo token fcm é gerado
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d("FCM_TOKEN", "Token gerado: $token") // <-- Logcat do token
+        Log.d("FCM_TOKEN", "token gerado: $token")
 
-        // Salvar token no Firestore (para envio futuro)
+        // guarda token no firestore
         val db = FirebaseFirestore.getInstance()
         val data = hashMapOf("fcmToken" to token)
         db.collection("users").document("currentUser").set(data)

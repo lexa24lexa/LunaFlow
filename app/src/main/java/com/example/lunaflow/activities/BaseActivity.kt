@@ -31,6 +31,7 @@ abstract class BaseActivity : AppCompatActivity() {
 
     private val REQUEST_NOTIFICATION_PERMISSION = 1
 
+    // inicializa firebase e notificacoes
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         auth = FirebaseAuth.getInstance()
@@ -38,8 +39,9 @@ abstract class BaseActivity : AppCompatActivity() {
         checkNotificationPermission()
     }
 
+    // verifica permissao de notificacoes (android 13+)
     private fun checkNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.POST_NOTIFICATIONS
@@ -54,17 +56,18 @@ abstract class BaseActivity : AppCompatActivity() {
         }
     }
 
+    // define layout e inicializa toolbar e bottom nav
     protected fun setContentLayout(layoutRes: Int) {
         setContentView(R.layout.activity_base)
 
         toolbar = findViewById(R.id.toolbar)
-        //setSupportActionBar(toolbar)
         bottomNav = findViewById(R.id.bottomNavigationView)
 
         val container = findViewById<FrameLayout>(R.id.container)
         layoutInflater.inflate(layoutRes, container, true)
     }
 
+    // configura bottom navigation
     protected fun setupBottomNav(selectedItemId: Int? = null) {
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
@@ -102,30 +105,34 @@ abstract class BaseActivity : AppCompatActivity() {
         }
     }
 
+    // mostra ou esconde bottom nav
     protected fun showBottomNav(show: Boolean) {
         if (::bottomNav.isInitialized) {
             bottomNav.visibility = if (show) View.VISIBLE else View.GONE
         }
     }
 
+    // mostra ou esconde toolbar
     protected fun showToolbar(show: Boolean) {
         if (::toolbar.isInitialized) {
             toolbar.visibility = if (show) View.VISIBLE else View.GONE
         }
     }
 
+    // define titulo da toolbar
     protected fun setToolbarTitle(title: String) {
         if (::toolbar.isInitialized) {
             toolbar.title = title
         }
     }
 
-    /** Toolbar menu **/
+    // infla menu da toolbar
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.toolbar_menu, menu)
         return true
     }
 
+    // trata clique nos itens do menu
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when(item.itemId) {
             R.id.action_notifications -> {
@@ -136,7 +143,7 @@ abstract class BaseActivity : AppCompatActivity() {
         }
     }
 
-    /** Notification helper **/
+    // cria canal de notificacoes (android 8+)
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "LunaFlowChannel"
@@ -150,15 +157,14 @@ abstract class BaseActivity : AppCompatActivity() {
         }
     }
 
+    // envia notificacao com titulo e mensagem
     fun sendNotification(title: String, message: String) {
-        // Check runtime permission for Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.POST_NOTIFICATIONS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            // Permissão não concedida: não faz nada ou pede permissao
             return
         }
 

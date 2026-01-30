@@ -18,7 +18,7 @@ object NotificationHelper {
     private var notificationId = 0
     private val auth = FirebaseAuth.getInstance()
 
-    // ---------------- CREATE CHANNEL ----------------
+    // cria canal de notificações
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "LunaFlow Notifications"
@@ -33,30 +33,31 @@ object NotificationHelper {
         }
     }
 
-    // ---------------- SEND NOTIFICATION ----------------
+    // envia notificação local
     fun sendNotification(context: Context, message: String) {
-        // Checa permissão no Android 13+
+        // verifica permissão android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
             ) {
-                Log.w("NotificationHelper", "Notification permission not granted")
+                Log.w("NotificationHelper", "notification permission not granted")
                 return
             }
         }
 
-        // Envia notificação local
+        // constrói notificação
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("LunaFlow Alert")
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
+        // mostra notificação
         with(NotificationManagerCompat.from(context)) {
             notify(notificationId++, builder.build())
         }
 
-        // Salva no Firestore (geral)
+        // guarda notificação no firestore geral
         val db = FirebaseFirestore.getInstance()
         val notificationMap = hashMapOf(
             "message" to message,
@@ -64,15 +65,17 @@ object NotificationHelper {
         )
         db.collection("notifications").add(notificationMap)
 
-        // Salva no Firestore do usuário (se estiver logado)
+        // guarda notificação no utilizador
         val currentUser = auth.currentUser
         if (currentUser != null) {
             db.collection("users")
                 .document(currentUser.uid)
                 .collection("notifications")
                 .add(notificationMap)
-                .addOnSuccessListener { Log.d("NotificationHelper", "Notification saved for user") }
-                .addOnFailureListener { e -> Log.e("NotificationHelper", "Failed to save notification", e) }
+                .addOnSuccessListener { Log.d("NotificationHelper", "notification saved for user") }
+                .addOnFailureListener { e ->
+                    Log.e("NotificationHelper", "failed to save notification", e)
+                }
         }
     }
 }

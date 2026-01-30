@@ -14,6 +14,7 @@ import java.util.*
 
 class LogSymptomActivity : BaseActivity() {
 
+    // inicializa activity e botoes
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -33,12 +34,13 @@ class LogSymptomActivity : BaseActivity() {
         findViewById<Button>(R.id.cancelButton).setOnClickListener { finish() }
     }
 
+    // salva sintomas no firestore
     private fun saveSymptoms() {
         val userId = auth.currentUser?.uid ?: return
         val db = FirebaseFirestore.getInstance()
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
 
-        // --- GET SYMPTOMS ---
+        // pega sintomas da UI
         val nausea = findViewById<CheckBox>(R.id.nausea).isChecked
         val headache = findViewById<CheckBox>(R.id.headache).isChecked
         val cramps = findViewById<CheckBox>(R.id.cramps).isChecked
@@ -53,13 +55,13 @@ class LogSymptomActivity : BaseActivity() {
         val anySymptomSelected = nausea || headache || cramps || bloating || dizziness ||
                 fatigue || moodSwings || anxiety || irritability || otherSymptomsText.isNotEmpty()
 
-        // --- GET FLOW ---
+        // pega fluxo da UI
         val flowGroup = findViewById<RadioGroup>(R.id.flowRadioGroup)
         val selectedFlow = when (flowGroup.checkedRadioButtonId) {
             R.id.flowLight -> "Light"
             R.id.flowMedium -> "Medium"
             R.id.flowHeavy -> "Heavy"
-            else -> null // important: null if not selected
+            else -> null
         }
 
         if (!anySymptomSelected && selectedFlow == null) {
@@ -79,12 +81,12 @@ class LogSymptomActivity : BaseActivity() {
             "irritability" to irritability
         )
 
-        // --- PREPARE LOGS ---
+        // prepara logs
         val logsMap = hashMapOf<String, Any>()
-        selectedFlow?.let { logsMap["flow"] = it } // only store flow if selected
+        selectedFlow?.let { logsMap["flow"] = it }
         if (otherSymptomsText.isNotEmpty()) logsMap["otherSymptoms"] = otherSymptomsText
 
-        // --- FETCH CYCLE RECORDS ---
+        // pega registros de ciclo
         db.collection("users").document(userId).collection("cycle_records")
             .get()
             .addOnSuccessListener { snapshot ->
@@ -96,25 +98,25 @@ class LogSymptomActivity : BaseActivity() {
                     resolvePhaseForDate(todayStr, cycleRecords) to false
                 }
 
-                // --- SAVE LOG ---
+                // salva log
                 val log = hashMapOf(
                     "type" to LogType.symptoms,
                     "userId" to userId,
                     "phase" to currentPhase,
-                    "flow" to selectedFlow, // null if not selected
+                    "flow" to selectedFlow,
                     "timestamp" to FieldValue.serverTimestamp(),
                     "symptoms" to symptoms,
                     "otherSymptoms" to otherSymptomsText
                 )
                 db.collection("users").document(userId).collection("logs").add(log)
 
-                // --- UPDATE OR CREATE CYCLE RECORD ---
+                // atualiza ou cria registro de ciclo
                 val cycleRecordRef = db.collection("users").document(userId).collection("cycle_records").document(todayStr)
                 cycleRecordRef.get().addOnSuccessListener { snapshot ->
                     if (snapshot.exists()) {
                         val existingLogs = snapshot.get("logs") as? Map<String, Any> ?: emptyMap()
                         val mergedLogs = existingLogs.toMutableMap()
-                        selectedFlow?.let { mergedLogs["flow"] = it } // only update if selected
+                        selectedFlow?.let { mergedLogs["flow"] = it }
                         if (otherSymptomsText.isNotEmpty()) mergedLogs["otherSymptoms"] = otherSymptomsText
 
                         val updates = hashMapOf<String, Any>(
@@ -123,7 +125,7 @@ class LogSymptomActivity : BaseActivity() {
                             "isManual" to true,
                             "logs" to mergedLogs
                         )
-                        selectedFlow?.let { updates["flow"] = it } // root flow only if selected
+                        selectedFlow?.let { updates["flow"] = it }
                         cycleRecordRef.set(updates, SetOptions.merge())
                     } else {
                         val newRecord = hashMapOf(
@@ -134,7 +136,7 @@ class LogSymptomActivity : BaseActivity() {
                             "logs" to logsMap,
                             "isManual" to isManual
                         )
-                        selectedFlow?.let { newRecord["flow"] = it } // only add flow if selected
+                        selectedFlow?.let { newRecord["flow"] = it }
                         cycleRecordRef.set(newRecord)
                     }
                 }
@@ -147,7 +149,7 @@ class LogSymptomActivity : BaseActivity() {
             }
     }
 
-    // --- CALCULATE PHASE BASED ON CYCLE RECORDS ---
+    // calcula fase do ciclo para a data
     private fun resolvePhaseForDate(dateStr: String, records: List<CycleRecord>): String {
         records.find { it.date == dateStr }?.let { return it.phase }
 

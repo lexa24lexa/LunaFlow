@@ -28,11 +28,11 @@ class HistoryActivity : BaseActivity() {
     private val physicalSymptoms = mutableSetOf<String>()
     private val emotionalSymptoms = mutableSetOf<String>()
 
+    // inicializa activity e componentes
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentLayout(R.layout.activity_history)
 
-        // toolbar
         val toolbar: androidx.appcompat.widget.Toolbar = findViewById(R.id.historyToolbar)
         setSupportActionBar(toolbar)
         supportActionBar?.title = "History"
@@ -51,11 +51,13 @@ class HistoryActivity : BaseActivity() {
         showBottomNav(true)
     }
 
+    // infla menu da toolbar
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.history_menu, menu)
         return true
     }
 
+    // trata clique nos itens do menu
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_filter -> {
@@ -66,6 +68,7 @@ class HistoryActivity : BaseActivity() {
         }
     }
 
+    // busca historico do firestore
     @SuppressLint("NotifyDataSetChanged")
     private fun fetchHistory() {
         val userId = auth.currentUser?.uid ?: return
@@ -98,7 +101,6 @@ class HistoryActivity : BaseActivity() {
                     val activityMap = doc.getMap("activity")
                     val symptomsMap = doc.getMap("symptoms")
 
-                    // dynamic symptoms
                     symptomsMap.forEach { (key, value) ->
                         if (value == true) {
                             when(key.lowercase(Locale.getDefault())) {
@@ -164,6 +166,7 @@ class HistoryActivity : BaseActivity() {
             }
     }
 
+    // mostra dialog de filtros
     private fun showFilterDialog() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_history_filters, null)
         val cbSex = dialogView.findViewById<CheckBox>(R.id.filterSex)
@@ -175,7 +178,6 @@ class HistoryActivity : BaseActivity() {
         val cbEmotional = dialogView.findViewById<CheckBox>(R.id.filterEmotional)
         val cbFlow = dialogView.findViewById<CheckBox>(R.id.filterFlow)
 
-        // pre-check saved selections
         cbSex.isChecked = selectedFiltersMemory.contains("Sex")
         cbMasturbation.isChecked = selectedFiltersMemory.contains("Masturbation")
         cbPlanB.isChecked = selectedFiltersMemory.contains("Plan B")
@@ -212,6 +214,7 @@ class HistoryActivity : BaseActivity() {
             .show()
     }
 
+    // aplica filtros selecionados na lista
     private fun applyFilters(selectedFilters: List<String>) {
         filteredItems.clear()
 
@@ -237,6 +240,7 @@ class HistoryActivity : BaseActivity() {
         adapter.updateList(filteredItems)
     }
 
+    // extrai map de document snapshot
     private fun DocumentSnapshot.getMap(key: String): Map<String, Any?> {
         val raw = get(key)
         return if (raw is Map<*, *>) {

@@ -9,6 +9,7 @@ import com.google.firebase.auth.FirebaseAuth
 
 class ProfileActivity : BaseActivity() {
 
+    // inicializa activity e mostra perfil
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -31,6 +32,7 @@ class ProfileActivity : BaseActivity() {
         }
     }
 
+    // mostra dialogo de confirmacao de logout
     private fun showLogoutConfirmation() {
         AlertDialog.Builder(this)
             .setTitle("Log out")
@@ -40,6 +42,7 @@ class ProfileActivity : BaseActivity() {
             .show()
     }
 
+    // faz logout do usuario e volta para login
     private fun logout() {
         FirebaseAuth.getInstance().signOut()
         val intent = Intent(this, LoginActivity::class.java)

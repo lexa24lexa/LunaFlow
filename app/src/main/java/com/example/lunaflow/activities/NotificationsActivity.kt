@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.lunaflow.R
+import com.example.lunaflow.adapters.NotificationsAdapter
 import com.google.firebase.firestore.FirebaseFirestore
 
 class NotificationsActivity : BaseActivity() {
@@ -12,6 +13,7 @@ class NotificationsActivity : BaseActivity() {
     private lateinit var adapter: NotificationsAdapter
     private val notificationsList = mutableListOf<String>()
 
+    // inicializa activity e recycler view
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentLayout(R.layout.activity_notifications)
@@ -25,6 +27,7 @@ class NotificationsActivity : BaseActivity() {
         fetchNotifications()
     }
 
+    // busca notificações do firestore
     private fun fetchNotifications() {
         val db = FirebaseFirestore.getInstance()
         db.collection("notifications")

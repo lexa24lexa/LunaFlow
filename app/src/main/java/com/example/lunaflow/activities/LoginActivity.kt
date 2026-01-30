@@ -13,6 +13,7 @@ import androidx.core.content.edit
 
 class LoginActivity : BaseActivity() {
 
+    // inicializa activity e trata login e reset de senha
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentLayout(R.layout.activity_login)
@@ -72,6 +73,7 @@ class LoginActivity : BaseActivity() {
         }
     }
 
+    // trata clique no back da toolbar
     override fun onSupportNavigateUp(): Boolean {
         finish()
         return true

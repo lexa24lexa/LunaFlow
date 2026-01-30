@@ -17,6 +17,7 @@ class LogActivityActivity : BaseActivity() {
     private lateinit var otherMedSpinner: Spinner
     private val riskyMeds = mutableListOf<String>()
 
+    // inicializa activity e componentes
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentLayout(R.layout.activity_log_activity)
@@ -33,14 +34,12 @@ class LogActivityActivity : BaseActivity() {
         val otherMedCheckBox: CheckBox = findViewById(R.id.otherMedication)
         otherMedSpinner = findViewById(R.id.otherMedicationSpinner)
 
-        // time since intercourse spinner
         timeSinceSpinner = findViewById(R.id.timeSinceIntercourseSpinner)
         val timeOptions = listOf("30 min ago", "1 hour ago", "2 hours ago", "6 hours ago", "12 hours ago", "24 hours ago")
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, timeOptions)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         timeSinceSpinner.adapter = adapter
 
-        // show/hide layouts
         sexCheckBox.setOnCheckedChangeListener { _, isChecked -> sexLayout.visibility = if (isChecked) View.VISIBLE else View.GONE }
         planBCheckBox.setOnCheckedChangeListener { _, isChecked -> planBLayout.visibility = if (isChecked) View.VISIBLE else View.GONE }
         otherMedCheckBox.setOnCheckedChangeListener { _, isChecked -> otherMedSpinner.visibility = if (isChecked) View.VISIBLE else View.GONE }
@@ -51,6 +50,7 @@ class LogActivityActivity : BaseActivity() {
         findViewById<Button>(R.id.cancelButton).setOnClickListener { finish() }
     }
 
+    // busca medicamentos do firestore
     private fun fetchMedicationsFromFirebase() {
         FirebaseFirestore.getInstance().collection("medications").get()
             .addOnSuccessListener { docs ->
@@ -64,6 +64,7 @@ class LogActivityActivity : BaseActivity() {
             }
     }
 
+    // salva atividade no firestore
     private fun saveActivity() {
         val userId = auth.currentUser?.uid ?: return
         val db = FirebaseFirestore.getInstance()
@@ -91,7 +92,6 @@ class LogActivityActivity : BaseActivity() {
             activityData["otherMedication"] = otherMedSpinner.selectedItem.toString()
         }
 
-        // Salvar log de atividade
         val log = hashMapOf(
             "type" to "activity",
             "userId" to userId,
@@ -100,18 +100,15 @@ class LogActivityActivity : BaseActivity() {
         )
         db.collection("users").document(userId).collection("logs").add(log)
 
-        // Atualizar ou criar CycleRecord
         val cycleRecordRef = db.collection("users").document(userId).collection("cycle_records").document(todayStr)
         cycleRecordRef.get().addOnSuccessListener { snapshot ->
             if (snapshot.exists()) {
-                val updates = hashMapOf<String, Any>(
-                    "logs" to activityData
-                )
+                val updates = hashMapOf<String, Any>("logs" to activityData)
                 cycleRecordRef.update(updates)
             } else {
                 val newRecord = hashMapOf(
                     "date" to todayStr,
-                    "phase" to "luteal", // futuramente calculável
+                    "phase" to "luteal",
                     "logs" to activityData,
                     "symptoms" to mapOf<String, Boolean>(),
                     "flow" to "None"

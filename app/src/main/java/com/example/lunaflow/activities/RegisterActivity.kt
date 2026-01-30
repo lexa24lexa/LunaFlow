@@ -22,6 +22,7 @@ class RegisterActivity : BaseActivity() {
     private lateinit var confirmPasswordLayout: TextInputLayout
     private lateinit var confirmPasswordEditText: TextInputEditText
 
+    // inicializa activity e valida inputs
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentLayout(R.layout.activity_register)
@@ -40,6 +41,7 @@ class RegisterActivity : BaseActivity() {
         confirmPasswordEditText = findViewById(R.id.confirmPasswordEditText)
         val registerButton = findViewById<Button>(R.id.registerButton)
 
+        // valida password em tempo real
         passwordEditText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -52,6 +54,7 @@ class RegisterActivity : BaseActivity() {
             override fun afterTextChanged(s: Editable?) {}
         })
 
+        // verifica campos e chama register
         registerButton.setOnClickListener {
             val name = nameEditText.text.toString().trim()
             val surname = surnameEditText.text.toString().trim()
@@ -82,6 +85,7 @@ class RegisterActivity : BaseActivity() {
         }
     }
 
+    // registra usuario no firebase auth e firestore
     private fun registerUser(name: String, surname: String, email: String, password: String) {
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
@@ -107,6 +111,7 @@ class RegisterActivity : BaseActivity() {
             }
     }
 
+    // trata botao de voltar na toolbar
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
         return when (item.itemId) {
             android.R.id.home -> {

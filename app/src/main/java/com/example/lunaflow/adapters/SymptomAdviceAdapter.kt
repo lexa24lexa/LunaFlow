@@ -10,19 +10,23 @@ import com.example.lunaflow.R
 class SymptomAdviceAdapter(private val symptomList: List<String>) :
     RecyclerView.Adapter<SymptomAdviceAdapter.SymptomViewHolder>() {
 
+    // view holder do sintoma
     inner class SymptomViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val symptomText: TextView = itemView.findViewById(R.id.symptomText)
     }
 
+    // cria o view holder
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SymptomViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_symptom_advice, parent, false)
         return SymptomViewHolder(view)
     }
 
+    // associa texto do sintoma à view
     override fun onBindViewHolder(holder: SymptomViewHolder, position: Int) {
         holder.symptomText.text = symptomList[position]
     }
 
+    // número total de sintomas
     override fun getItemCount() = symptomList.size
 }
