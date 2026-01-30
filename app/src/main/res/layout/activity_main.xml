@@ -75,7 +75,10 @@
                         android:id="@+id/adviceRecyclerView"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:scrollbars="vertical"/>
+                        android:scrollbars="vertical"
+                        android:overScrollMode="never"
+                        android:clipToPadding="false"
+                        android:background="@android:color/transparent"/>
                 </LinearLayout>
 
                 <androidx.recyclerview.widget.RecyclerView
@@ -95,16 +98,42 @@
                 android:orientation="vertical"
                 android:layout_marginTop="24dp">
 
-                <TextView
-                    android:id="@+id/calendarMonthYear"
-                    android:layout_width="wrap_content"
+                <!-- Month navigation -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Loading..."
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginBottom="8dp"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
 
+                    <ImageButton
+                        android:id="@+id/btnPrevMonth"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@android:color/transparent"
+                        android:src="@drawable/ic_arrow_left"
+                        android:contentDescription="Previous month" />
+
+                    <TextView
+                        android:id="@+id/calendarMonthYear"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Loading..."
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:gravity="center" />
+
+                    <ImageButton
+                        android:id="@+id/btnNextMonth"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@android:color/transparent"
+                        android:src="@drawable/ic_arrow_right"
+                        android:contentDescription="Next month" />
+                </LinearLayout>
+
+                <!-- Week days -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

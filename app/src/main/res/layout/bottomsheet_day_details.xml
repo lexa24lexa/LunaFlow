@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@drawable/rounded_background">
+
+    <!-- phase -->
+    <TextView
+        android:id="@+id/bottomSheetPhase"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Phase: Unknown"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <!-- activity logs -->
+    <TextView
+        android:id="@+id/bottomSheetLogs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No activity logs"
+        android:textSize="14sp"
+        android:layout_marginBottom="8dp"/>
+
+    <!-- symptoms -->
+    <TextView
+        android:id="@+id/bottomSheetSymptoms"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No symptoms"
+        android:textSize="14sp"/>
+</LinearLayout>
