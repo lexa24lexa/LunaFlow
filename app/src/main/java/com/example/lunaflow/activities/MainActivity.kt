@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.Gravity
 import android.widget.GridLayout
 import android.widget.ImageButton
@@ -20,7 +19,7 @@ import com.example.lunaflow.R
 import com.example.lunaflow.adapters.AdviceAdapter
 import com.example.lunaflow.adapters.SymptomAdviceAdapter
 import com.example.lunaflow.models.CycleRecord
-import com.example.lunaflow.models.UserLog
+import com.example.lunaflow.models.LogEntry
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.firestore.FirebaseFirestore
@@ -32,7 +31,6 @@ import android.Manifest
 
 class MainActivity : BaseActivity() {
 
-    // views principais
     private lateinit var currentPhaseText: TextView
     private lateinit var nextCycleText: TextView
     private lateinit var adviceRecyclerView: RecyclerView
@@ -40,22 +38,15 @@ class MainActivity : BaseActivity() {
     private lateinit var calendarMonthYear: TextView
     private lateinit var frequentSymptomRecyclerView: RecyclerView
 
-    // firestore
     private val db = FirebaseFirestore.getInstance()
-
-    // registros de ciclo cacheados
     private var cachedCycleRecords: List<CycleRecord> = emptyList()
-
-    // mês exibido no calendário
     private var displayedCalendar = Calendar.getInstance()
 
-    // launcher para pedir permissão de notificações
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) sendAllNotifications()
         }
 
-    // inicializa activity
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -159,9 +150,9 @@ class MainActivity : BaseActivity() {
 
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
         val today = sdf.parse(sdf.format(Date())) ?: return
-
         // registros menstruais manuais
-        val menstruationRecords = cachedCycleRecords.filter { it.phase.lowercase() == "menstruation" && it.isManual }
+        val menstruationRecords =
+            cachedCycleRecords.filter { it.phase.lowercase() == "menstruation" && it.isManual }
 
         var start: Date? = null
         var end: Date? = null
@@ -192,12 +183,14 @@ class MainActivity : BaseActivity() {
                 "heavy" -> 7
                 else -> 5
             }
-            val endDate = Calendar.getInstance().apply { time = recordDate; add(Calendar.DAY_OF_MONTH, flowDuration - 1) }.time
+            val endDate = Calendar.getInstance()
+                .apply { time = recordDate; add(Calendar.DAY_OF_MONTH, flowDuration - 1) }.time
             !today.before(recordDate) && !today.after(endDate)
         }
 
         // define fase atual
-        val currentPhase = if (isMenstruating) "Menstruation" else resolvePhaseForDate(sdf.format(today))
+        val currentPhase =
+            if (isMenstruating) "Menstruation" else resolvePhaseForDate(sdf.format(today))
         currentPhaseText.text = "You are in $currentPhase Phase"
 
         // busca conselhos e sintomas
@@ -207,9 +200,15 @@ class MainActivity : BaseActivity() {
         // calcula próximo ciclo
         if (start != null) {
             val cal = Calendar.getInstance().apply { time = start; add(Calendar.DAY_OF_MONTH, 28) }
-            val daysLeft = ((cal.timeInMillis - Calendar.getInstance().timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
+            val daysLeft =
+                ((cal.timeInMillis - Calendar.getInstance().timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
             nextCycleText.text =
-                "Next cycle in $daysLeft days, scheduled for ${SimpleDateFormat("MMMM dd", Locale.ENGLISH).format(cal.time)}"
+                "Next cycle in $daysLeft days, scheduled for ${
+                    SimpleDateFormat(
+                        "MMMM dd",
+                        Locale.ENGLISH
+                    ).format(cal.time)
+                }"
         } else {
             nextCycleText.text = "Next cycle date unavailable"
         }
@@ -223,7 +222,6 @@ class MainActivity : BaseActivity() {
         calendarMonthYear.text = SimpleDateFormat("MMMM yyyy", Locale.ENGLISH).format(calendar.time)
 
         calendarDaysGrid.removeAllViews()
-
         val tempCal = calendar.clone() as Calendar
         tempCal.set(Calendar.DAY_OF_MONTH, 1)
         val firstDayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK)
@@ -246,7 +244,6 @@ class MainActivity : BaseActivity() {
         for (day in 1..daysInMonth) {
             val dateStr = String.format("%04d-%02d-%02d", year, month + 1, day)
             val record = recordsMap[dateStr]
-
             val phase = record?.phase ?: resolvePhaseForDate(dateStr)
 
             val dayPhaseColor = when (phase.lowercase()) {
@@ -262,7 +259,6 @@ class MainActivity : BaseActivity() {
                 gravity = Gravity.CENTER
                 setPadding(16, 16, 16, 16)
 
-                // fundo arredondado
                 val bg = ContextCompat.getDrawable(context, R.drawable.rounded_background)?.mutate()
                 background = bg
                 bg?.setTint(dayPhaseColor)
@@ -327,7 +323,8 @@ class MainActivity : BaseActivity() {
             .whereEqualTo("phase", phase.replaceFirstChar { it.uppercase() })
             .get()
             .addOnSuccessListener { result ->
-                val advices = result.documents.mapNotNull { it.toObject(com.example.lunaflow.models.Advice::class.java) }
+                val advices =
+                    result.documents.mapNotNull { it.toObject(com.example.lunaflow.models.Advice::class.java) }
 
                 val adviceToShow = if (advices.isNotEmpty()) {
                     val lastIndex = prefs.getInt("last_advice_index_$phase", 0)
@@ -338,7 +335,14 @@ class MainActivity : BaseActivity() {
                 adviceRecyclerView.adapter = AdviceAdapter(listOf(adviceToShow))
             }
             .addOnFailureListener {
-                adviceRecyclerView.adapter = AdviceAdapter(listOf(com.example.lunaflow.models.Advice(phase, "Failed to load advice.")))
+                adviceRecyclerView.adapter = AdviceAdapter(
+                    listOf(
+                        com.example.lunaflow.models.Advice(
+                            phase,
+                            "Failed to load advice."
+                        )
+                    )
+                )
             }
     }
 
@@ -346,45 +350,66 @@ class MainActivity : BaseActivity() {
     private fun fetchFrequentSymptoms(phase: String) {
         val currentUser = auth.currentUser ?: return
 
-        db.collection("users").document(currentUser.uid).collection("logs")
-            .whereEqualTo("type", "symptoms")
+        db.collection("users").document(currentUser.uid)
+            .collection("cycle_records")
             .get()
-            .addOnSuccessListener { result ->
-                val logs = result.documents.mapNotNull { it.toObject(UserLog::class.java) }
+            .addOnSuccessListener { snapshot ->
+
+                val symptomLogs = snapshot.documents.mapNotNull { doc ->
+                    try {
+                        val record = doc.toObject(CycleRecord::class.java)
+                        record?.logs?.filter { it.type.lowercase() == "symptoms" }
+                    } catch (e: Exception) {
+                        null
+                    }
+                }.flatten()
+
                 val symptomFrequency = mutableMapOf<String, Int>()
 
-                logs.forEach { log ->
-                    log.symptoms.forEach { (symptom, hasSymptom) ->
-                        if (hasSymptom) symptomFrequency[symptom.lowercase()] = symptomFrequency.getOrDefault(symptom.lowercase(), 0) + 1
+                symptomLogs.forEach { log ->
+                    log.data.forEach { (key, value) ->
+                        if (key.lowercase() != "flow" && value is Boolean && value) {
+                            val symptomKey = key.lowercase()
+                            symptomFrequency[symptomKey] = symptomFrequency.getOrDefault(symptomKey, 0) + 1
+                        }
                     }
                 }
 
-                if (logs.isEmpty() || symptomFrequency.isEmpty()) {
-                    frequentSymptomRecyclerView.adapter = SymptomAdviceAdapter(listOf("No symptoms registered"))
+                if (symptomFrequency.isEmpty()) {
+                    frequentSymptomRecyclerView.adapter =
+                        SymptomAdviceAdapter(listOf("No symptoms registered"))
                     return@addOnSuccessListener
                 }
 
                 val symptomAdvices = mutableListOf<String>()
+                var loadedCount = 0
                 symptomFrequency.keys.forEach { symptom ->
                     getSymptomAdvice(phase, symptom) { advice ->
                         symptomAdvices.add("Symptom: ${symptom.replaceFirstChar { it.uppercase() }}\nAdvice: $advice")
-                        frequentSymptomRecyclerView.adapter = SymptomAdviceAdapter(symptomAdvices)
+                        loadedCount++
+                        if (loadedCount == symptomFrequency.size) {
+                            frequentSymptomRecyclerView.adapter = SymptomAdviceAdapter(symptomAdvices)
+                        }
                     }
                 }
             }
             .addOnFailureListener {
-                frequentSymptomRecyclerView.adapter = SymptomAdviceAdapter(listOf("Failed to load symptoms."))
+                frequentSymptomRecyclerView.adapter =
+                    SymptomAdviceAdapter(listOf("Failed to load symptoms."))
             }
     }
 
     // busca conselho de sintoma
     private fun getSymptomAdvice(phase: String, symptom: String, callback: (String) -> Unit) {
         db.collection("symptom_advices")
+        db.collection("symptom_advices")
             .whereEqualTo("phase", phase.lowercase())
             .whereEqualTo("symptom", symptom.lowercase())
             .get()
             .addOnSuccessListener { result ->
-                val advice = if (result.documents.isNotEmpty()) result.documents[0].getString("advice") ?: "No advice available." else "No advice available."
+                val advice = if (result.documents.isNotEmpty())
+                    result.documents[0].getString("advice") ?: "No advice available."
+                else "No advice available."
                 callback(advice)
             }
             .addOnFailureListener { callback("No advice available.") }
@@ -403,24 +428,51 @@ class MainActivity : BaseActivity() {
             // fase
             phaseText.text = "Phase: ${record.phase}"
 
-            // atividades
-            val activityLogs = record.logs.filter { it.value == true && it.key != "flow" && it.key != "otherSymptoms" }
-                .keys.map { it.replaceFirstChar { c -> c.uppercase() } }
-            logsText.text = if (activityLogs.isNotEmpty()) activityLogs.joinToString("\n") else "No activity logs"
+            val activityLogs = record.logs.filter { it.type.equals("activity", ignoreCase = true) }
+                .mapNotNull { log ->
+                    val activities = mutableListOf<String>()
 
-            // sintomas e fluxo
-            val activeSymptoms = record.symptoms.filter { it.value }.keys.map { it.replaceFirstChar { c -> c.uppercase() } }
+                    log.data.forEach { (key, value) ->
+                        when (value) {
+                            is Boolean -> if (value) {
+                                activities.add(key.replaceFirstChar { it.uppercase() })
+                            }
+                            is String -> if (value.isNotBlank()) {
+                                activities.add("${key.replaceFirstChar { it.uppercase() }}: $value")
+                            }
+                        }
+                    }
+
+                    if (activities.isNotEmpty())
+                        "Activity: ${activities.joinToString(", ")}"
+                    else null
+                }
+
+            logsText.text =
+                if (activityLogs.isNotEmpty()) activityLogs.joinToString("\n")
+                else "No activity logs"
+
+            val symptomLogs = record.logs.filter { it.type.lowercase() == "symptoms" }
+            val activeSymptoms = mutableListOf<String>()
+            var flowToShow: String? = null
+
+            symptomLogs.forEach { log ->
+                log.data.forEach { (key, value) ->
+                    when {
+                        key.equals("flow", true) && value is String -> flowToShow = value
+                        value is Boolean && value -> activeSymptoms.add(key.replaceFirstChar { it.uppercase() })
+                    }
+                }
+            }
+
             val symptomOutput = mutableListOf<String>()
-
-            val flowFromRecord = record.flow
-            val flowFromLogs = record.logs["flow"] as? String
-            val validFlows = listOf("Light", "Medium", "Heavy")
-            val flowToShow = flowFromRecord.takeIf { it in validFlows } ?: flowFromLogs.takeIf { it in validFlows }
             flowToShow?.let { symptomOutput.add("Flow: $it") }
+            if (activeSymptoms.isNotEmpty()) symptomOutput.add(
+                "Symptoms: ${activeSymptoms.joinToString(", ")}"
+            )
 
-            if (activeSymptoms.isNotEmpty()) symptomOutput.add("Symptoms: ${activeSymptoms.joinToString(", ")}")
-
-            symptomsText.text = if (symptomOutput.isNotEmpty()) symptomOutput.joinToString("\n") else "No symptoms"
+            symptomsText.text =
+                if (symptomOutput.isNotEmpty()) symptomOutput.joinToString("\n") else "No symptoms"
         } else {
             phaseText.text = "No record for this day"
             logsText.text = ""

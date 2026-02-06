@@ -1,15 +1,15 @@
 package com.example.lunaflow.activities
 
-import android.content.Intent
-import android.icu.text.SimpleDateFormat
 import android.os.Bundle
 import android.view.View
 import android.widget.*
 import com.example.lunaflow.R
-import com.google.firebase.firestore.FieldValue
+import com.example.lunaflow.models.LogEntry
+import com.example.lunaflow.models.LogType
+import com.example.lunaflow.models.CycleRecord
 import com.google.firebase.firestore.FirebaseFirestore
-import java.util.Date
-import java.util.Locale
+import java.text.SimpleDateFormat
+import java.util.*
 
 class LogActivityActivity : BaseActivity() {
 
@@ -17,7 +17,6 @@ class LogActivityActivity : BaseActivity() {
     private lateinit var otherMedSpinner: Spinner
     private val riskyMeds = mutableListOf<String>()
 
-    // inicializa activity e componentes
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentLayout(R.layout.activity_log_activity)
@@ -50,7 +49,6 @@ class LogActivityActivity : BaseActivity() {
         findViewById<Button>(R.id.cancelButton).setOnClickListener { finish() }
     }
 
-    // busca medicamentos do firestore
     private fun fetchMedicationsFromFirebase() {
         FirebaseFirestore.getInstance().collection("medications").get()
             .addOnSuccessListener { docs ->
@@ -64,9 +62,12 @@ class LogActivityActivity : BaseActivity() {
             }
     }
 
-    // salva atividade no firestore
     private fun saveActivity() {
-        val userId = auth.currentUser?.uid ?: return
+        val user = auth.currentUser ?: run {
+            Toast.makeText(this, "Please log in first", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val userId = user.uid
         val db = FirebaseFirestore.getInstance()
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
 
@@ -74,12 +75,13 @@ class LogActivityActivity : BaseActivity() {
         val planBChecked = findViewById<CheckBox>(R.id.planBPill).isChecked
         val otherMedChecked = findViewById<CheckBox>(R.id.otherMedication).isChecked
 
-        val activityData: MutableMap<String, Any> = hashMapOf(
+        val activityData = mutableMapOf<String, Any>(
             "sex" to sexChecked,
             "masturbation" to findViewById<CheckBox>(R.id.masturbation).isChecked,
             "planBPill" to planBChecked,
             "birthControl" to findViewById<CheckBox>(R.id.birthControl).isChecked,
-            "otherMedication" to ""
+            "otherMedication" to if (otherMedChecked && otherMedSpinner.adapter.count > 0)
+                otherMedSpinner.selectedItem.toString() else ""
         )
 
         if (sexChecked) {
@@ -88,36 +90,50 @@ class LogActivityActivity : BaseActivity() {
             activityData["sexDetails"] = findViewById<EditText>(R.id.sexDetails).text.toString().trim()
         }
 
-        if (planBChecked && otherMedChecked && otherMedSpinner.adapter != null && otherMedSpinner.adapter.count > 0) {
-            activityData["otherMedication"] = otherMedSpinner.selectedItem.toString()
-        }
-
-        val log = hashMapOf(
-            "type" to "activity",
-            "userId" to userId,
-            "timestamp" to FieldValue.serverTimestamp(),
-            "activity" to activityData
+        val logEntry = LogEntry(
+            id = UUID.randomUUID().toString(), // unique ID to avoid Firebase crash
+            type = LogType.activity,
+            timestamp = System.currentTimeMillis(),
+            title = "Activity",
+            details = "",
+            data = activityData
         )
-        db.collection("users").document(userId).collection("logs").add(log)
 
-        val cycleRecordRef = db.collection("users").document(userId).collection("cycle_records").document(todayStr)
+        // save in logs subcollection
+        db.collection("users").document(userId).collection("logs")
+            .add(logEntry)
+            .addOnSuccessListener {
+                updateCycleRecord(userId, todayStr, logEntry)
+                Toast.makeText(this, "Activity saved", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to save activity", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun updateCycleRecord(userId: String, dateStr: String, logEntry: LogEntry) {
+        val cycleRecordRef = FirebaseFirestore.getInstance()
+            .collection("users").document(userId)
+            .collection("cycle_records").document(dateStr)
+
         cycleRecordRef.get().addOnSuccessListener { snapshot ->
             if (snapshot.exists()) {
-                val updates = hashMapOf<String, Any>("logs" to activityData)
-                cycleRecordRef.update(updates)
+                val record = snapshot.toObject(CycleRecord::class.java)
+                val updatedLogs = record?.logs?.toMutableList() ?: mutableListOf()
+                updatedLogs.add(logEntry)
+                cycleRecordRef.update("logs", updatedLogs)
             } else {
-                val newRecord = hashMapOf(
-                    "date" to todayStr,
-                    "phase" to "luteal",
-                    "logs" to activityData,
-                    "symptoms" to mapOf<String, Boolean>(),
-                    "flow" to "None"
+                val newRecord = CycleRecord(
+                    id = dateStr,
+                    date = dateStr,
+                    phase = "luteal",
+                    flow = "None",
+                    logs = listOf(logEntry),
+                    isManual = true
                 )
                 cycleRecordRef.set(newRecord)
             }
         }
-
-        Toast.makeText(this, "Activity saved", Toast.LENGTH_SHORT).show()
-        finish()
     }
 }

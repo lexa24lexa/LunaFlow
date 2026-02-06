@@ -7,6 +7,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.lunaflow.R
 import com.example.lunaflow.models.CycleRecord
+import com.example.lunaflow.models.LogType
 
 class CycleAdapter(
     private val records: List<CycleRecord>
@@ -31,8 +32,13 @@ class CycleAdapter(
         holder.tvDate.text = record.date
 
         // mostra sintomas ativos ou mensagem default
-        holder.tvSymptoms.text = if (record.symptoms.isNotEmpty()) {
-            record.symptoms.filter { it.value }.keys.joinToString(", ")
+        val symptoms = record.logs
+            .filter { it.type == LogType.symptoms }
+            .flatMap { it.data.keys }
+            .distinct()
+
+        holder.tvSymptoms.text = if (symptoms.isNotEmpty()) {
+            symptoms.joinToString(", ")
         } else {
             "No symptoms logged"
         }

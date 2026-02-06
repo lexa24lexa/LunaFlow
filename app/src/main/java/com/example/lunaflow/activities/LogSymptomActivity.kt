@@ -5,19 +5,18 @@ import android.os.Bundle
 import android.widget.*
 import com.example.lunaflow.R
 import com.example.lunaflow.models.CycleRecord
+import com.example.lunaflow.models.LogEntry
 import com.example.lunaflow.models.LogType
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
 import java.text.SimpleDateFormat
 import java.util.*
 
 class LogSymptomActivity : BaseActivity() {
 
-    // inicializa activity e botoes
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Make sure user is logged in
         if (auth.currentUser == null) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
@@ -34,13 +33,13 @@ class LogSymptomActivity : BaseActivity() {
         findViewById<Button>(R.id.cancelButton).setOnClickListener { finish() }
     }
 
-    // salva sintomas no firestore
     private fun saveSymptoms() {
-        val userId = auth.currentUser?.uid ?: return
+        val user = auth.currentUser ?: return
+        val userId = user.uid
         val db = FirebaseFirestore.getInstance()
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
 
-        // pega sintomas da UI
+        // Collect symptoms
         val nausea = findViewById<CheckBox>(R.id.nausea).isChecked
         val headache = findViewById<CheckBox>(R.id.headache).isChecked
         val cramps = findViewById<CheckBox>(R.id.cramps).isChecked
@@ -52,10 +51,6 @@ class LogSymptomActivity : BaseActivity() {
         val irritability = findViewById<CheckBox>(R.id.irritability).isChecked
         val otherSymptomsText = findViewById<EditText>(R.id.otherSymptoms).text?.toString()?.trim() ?: ""
 
-        val anySymptomSelected = nausea || headache || cramps || bloating || dizziness ||
-                fatigue || moodSwings || anxiety || irritability || otherSymptomsText.isNotEmpty()
-
-        // pega fluxo da UI
         val flowGroup = findViewById<RadioGroup>(R.id.flowRadioGroup)
         val selectedFlow = when (flowGroup.checkedRadioButtonId) {
             R.id.flowLight -> "Light"
@@ -64,12 +59,14 @@ class LogSymptomActivity : BaseActivity() {
             else -> null
         }
 
-        if (!anySymptomSelected && selectedFlow == null) {
+        if (!listOf(nausea, headache, cramps, bloating, dizziness, fatigue, moodSwings, anxiety, irritability)
+                .any { it } && otherSymptomsText.isEmpty() && selectedFlow == null) {
             Toast.makeText(this, "Please select at least one symptom or flow level", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val symptoms: Map<String, Boolean> = mapOf(
+        // Convert to Firestore-safe Map<String, Any?>
+        val symptomsMap: MutableMap<String, Any> = mutableMapOf(
             "nausea" to nausea,
             "headache" to headache,
             "cramps" to cramps,
@@ -80,64 +77,50 @@ class LogSymptomActivity : BaseActivity() {
             "anxiety" to anxiety,
             "irritability" to irritability
         )
+        if (otherSymptomsText.isNotEmpty()) {
+            symptomsMap["otherSymptoms"] = otherSymptomsText
+        }
 
-        // prepara logs
-        val logsMap = hashMapOf<String, Any>()
-        selectedFlow?.let { logsMap["flow"] = it }
-        if (otherSymptomsText.isNotEmpty()) logsMap["otherSymptoms"] = otherSymptomsText
+        val logEntry = LogEntry(
+            id = UUID.randomUUID().toString(),
+            type = LogType.symptoms,
+            timestamp = System.currentTimeMillis(),
+            title = "Symptoms",
+            details = "",
+            data = symptomsMap
+        )
 
-        // pega registros de ciclo
-        db.collection("users").document(userId).collection("cycle_records")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val cycleRecords = snapshot.documents.mapNotNull { it.toObject(CycleRecord::class.java) }
+        // 1️⃣ Save log entry in logs subcollection (like Activity does)
+        db.collection("users").document(userId).collection("logs")
+            .add(logEntry)
+            .addOnSuccessListener {
+                // 2️⃣ Update or create today's cycle record
+                val cycleRef = db.collection("users").document(userId)
+                    .collection("cycle_records").document(todayStr)
 
-                val (currentPhase, isManual) = if (selectedFlow != null) {
-                    "Menstruation" to true
-                } else {
-                    resolvePhaseForDate(todayStr, cycleRecords) to false
-                }
-
-                // salva log
-                val log = hashMapOf(
-                    "type" to LogType.symptoms,
-                    "userId" to userId,
-                    "phase" to currentPhase,
-                    "flow" to selectedFlow,
-                    "timestamp" to FieldValue.serverTimestamp(),
-                    "symptoms" to symptoms,
-                    "otherSymptoms" to otherSymptomsText
-                )
-                db.collection("users").document(userId).collection("logs").add(log)
-
-                // atualiza ou cria registro de ciclo
-                val cycleRecordRef = db.collection("users").document(userId).collection("cycle_records").document(todayStr)
-                cycleRecordRef.get().addOnSuccessListener { snapshot ->
+                cycleRef.get().addOnSuccessListener { snapshot ->
                     if (snapshot.exists()) {
-                        val existingLogs = snapshot.get("logs") as? Map<String, Any> ?: emptyMap()
-                        val mergedLogs = existingLogs.toMutableMap()
-                        selectedFlow?.let { mergedLogs["flow"] = it }
-                        if (otherSymptomsText.isNotEmpty()) mergedLogs["otherSymptoms"] = otherSymptomsText
+                        val record = snapshot.toObject(CycleRecord::class.java)
+                        val updatedLogs = record?.logs?.toMutableList() ?: mutableListOf()
+                        updatedLogs.add(logEntry)
 
-                        val updates = hashMapOf<String, Any>(
-                            "symptoms" to symptoms,
-                            "phase" to currentPhase,
-                            "isManual" to true,
-                            "logs" to mergedLogs
+                        val updates: MutableMap<String, Any?> = mutableMapOf(
+                            "logs" to updatedLogs,
+                            "phase" to resolvePhaseForDate(record, selectedFlow),
+                            "isManual" to true
                         )
                         selectedFlow?.let { updates["flow"] = it }
-                        cycleRecordRef.set(updates, SetOptions.merge())
+                        cycleRef.update(updates)
                     } else {
-                        val newRecord = hashMapOf(
-                            "id" to todayStr,
-                            "date" to todayStr,
-                            "phase" to currentPhase,
-                            "symptoms" to symptoms,
-                            "logs" to logsMap,
-                            "isManual" to isManual
+                        val newRecord = CycleRecord(
+                            id = todayStr,
+                            date = todayStr,
+                            phase = if (selectedFlow != null) "Menstruation" else "Unknown",
+                            flow = selectedFlow ?: "None",
+                            logs = listOf(logEntry),
+                            isManual = true
                         )
-                        selectedFlow?.let { newRecord["flow"] = it }
-                        cycleRecordRef.set(newRecord)
+                        cycleRef.set(newRecord)
                     }
                 }
 
@@ -145,30 +128,12 @@ class LogSymptomActivity : BaseActivity() {
                 finish()
             }
             .addOnFailureListener {
-                Toast.makeText(this, "Failed to fetch cycle data", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Failed to save symptoms", Toast.LENGTH_SHORT).show()
             }
     }
 
-    // calcula fase do ciclo para a data
-    private fun resolvePhaseForDate(dateStr: String, records: List<CycleRecord>): String {
-        records.find { it.date == dateStr }?.let { return it.phase }
-
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
-        val date = sdf.parse(dateStr) ?: return "Unknown"
-
-        val lastManualMenstruation = records.lastOrNull {
-            it.phase.lowercase() == "menstruation" && it.isManual && it.date <= dateStr
-        } ?: return "Unknown"
-
-        val start = sdf.parse(lastManualMenstruation.date) ?: return "Unknown"
-        val diffDays = ((date.time - start.time) / (1000 * 60 * 60 * 24)).toInt()
-
-        return when {
-            diffDays in 0..4 -> "Menstruation"
-            diffDays in 5..13 -> "Follicular"
-            diffDays in 14..15 -> "Ovulation"
-            diffDays in 16..27 -> "Luteal"
-            else -> "Unknown"
-        }
+    private fun resolvePhaseForDate(record: CycleRecord?, selectedFlow: String?): String {
+        return if (selectedFlow != null) "Menstruation"
+        else record?.phase ?: "Unknown"
     }
 }
