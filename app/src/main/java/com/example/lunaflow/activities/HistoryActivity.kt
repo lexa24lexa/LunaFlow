@@ -12,8 +12,6 @@ import com.example.lunaflow.R
 import com.example.lunaflow.adapters.HistoryAdapter
 import com.example.lunaflow.models.CycleRecord
 import com.example.lunaflow.models.HistoryItem
-import com.example.lunaflow.models.LogEntry
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import java.text.SimpleDateFormat
@@ -40,7 +38,13 @@ class HistoryActivity : BaseActivity() {
 
         recyclerView = findViewById(R.id.historyRecyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
-        adapter = HistoryAdapter(allItems, onLogClick = { showLogOptions(it) })
+
+        adapter = HistoryAdapter(
+            allItems,
+            onLogClick = { showLogDetails(it) },
+            onDeleteClick = { confirmDeleteLog(it) }
+        )
+
         recyclerView.adapter = adapter
 
         fetchHistory()
@@ -71,6 +75,7 @@ class HistoryActivity : BaseActivity() {
 
                 for (doc in snapshot.documents) {
                     val record = doc.toObject(CycleRecord::class.java) ?: continue
+                    val cycleId = doc.id
                     val recordDate = sdfRecord.parse(record.date) ?: continue
                     val dateStr = sdfDisplay.format(recordDate)
 
@@ -80,15 +85,22 @@ class HistoryActivity : BaseActivity() {
                     }
 
                     record.logs.sortedByDescending { it.timestamp }.forEach { log ->
-                        // collect symptoms for filters
+
                         if (log.type == "symptoms") {
                             log.data.keys.forEach { key ->
                                 val keyLower = key.lowercase(Locale.getDefault())
-                                if (keyLower in listOf("mood swings", "anxiety", "irritability")) emotionalSymptoms.add(key)
-                                else if (keyLower != "othersymptoms") physicalSymptoms.add(key)
+                                if (keyLower in listOf("mood swings", "anxiety", "irritability"))
+                                    emotionalSymptoms.add(key)
+                                else if (keyLower != "othersymptoms")
+                                    physicalSymptoms.add(key)
                             }
                         }
-                        allItems.add(HistoryItem.Log(log))
+
+                        allItems.add(
+                            HistoryItem.Log(
+                                log.copy(cycleId = cycleId)
+                            )
+                        )
                     }
                 }
 
@@ -96,37 +108,55 @@ class HistoryActivity : BaseActivity() {
                 filteredItems.addAll(allItems)
                 adapter.updateList(filteredItems)
             }
-            .addOnFailureListener { e ->
-                e.printStackTrace()
-            }
-    }
-
-    private fun showLogOptions(logItem: HistoryItem.Log) {
-        val options = arrayOf("View Details", "Edit", "Delete")
-        AlertDialog.Builder(this)
-            .setTitle("Choose Action")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> showLogDetails(logItem)
-                    1 -> editLog(logItem)
-                    2 -> confirmDeleteLog(logItem)
-                }
-            }
-            .show()
+            .addOnFailureListener { it.printStackTrace() }
     }
 
     private fun showLogDetails(logItem: HistoryItem.Log) {
         val log = logItem.logEntry
         val sdfTime = SimpleDateFormat("HH:mm", Locale.getDefault())
+
         val message = buildString {
             append("Time: ${sdfTime.format(Date(log.timestamp))}\n")
-            append("Type: ${when (log.type) {
-                "activity" -> "Activity"
-                "symptoms" -> "Symptom"
-                else -> "Log"
-            }}\n\n")
-            if (log.title.isNotEmpty()) append("Title: ${log.title}\n")
-            if (log.details.isNotEmpty()) append("Details: ${log.details}\n")
+
+            append("Type: ${
+                when (log.type) {
+                    "activity" -> "Activity"
+                    "symptoms" -> "Symptoms"
+                    else -> "Log"
+                }
+            }\n\n")
+
+            if (log.title.isNotBlank() &&
+                log.title.lowercase() !in listOf("activity", "symptoms")) {
+                append("Title: ${log.title}\n")
+            }
+
+            if (log.details.isNotBlank()) {
+                append("Details: ${log.details}\n")
+            }
+
+            if (log.data.isNotEmpty()) {
+
+                val selectedData = log.data.filter { (_, value) ->
+                    when (value) {
+                        is Boolean -> value
+                        is String -> value.isNotBlank()
+                        is Number -> true
+                        else -> value != null
+                    }
+                }
+
+                if (selectedData.isNotEmpty()) {
+                    append("\nDetails:\n")
+                    selectedData.forEach { (key, value) ->
+                        if (value is Boolean) {
+                            append("• $key\n")
+                        } else {
+                            append("• $key: $value\n")
+                        }
+                    }
+                }
+            }
         }
 
         AlertDialog.Builder(this)
@@ -134,11 +164,6 @@ class HistoryActivity : BaseActivity() {
             .setMessage(message)
             .setPositiveButton("Close", null)
             .show()
-    }
-
-    private fun editLog(logItem: HistoryItem.Log) {
-        val log = logItem.logEntry
-        // TODO: open ActivityLogActivity or SymptomLogActivity with log.cycleId + log.id
     }
 
     private fun confirmDeleteLog(logItem: HistoryItem.Log) {
@@ -153,6 +178,7 @@ class HistoryActivity : BaseActivity() {
     private fun deleteLog(logItem: HistoryItem.Log) {
         val log = logItem.logEntry
         val userId = auth.currentUser?.uid ?: return
+
         val cycleRef = db.collection("users")
             .document(userId)
             .collection("cycle_records")
@@ -161,6 +187,7 @@ class HistoryActivity : BaseActivity() {
         cycleRef.get().addOnSuccessListener { doc ->
             val record = doc.toObject(CycleRecord::class.java) ?: return@addOnSuccessListener
             val updatedLogs = record.logs.filter { it.id != log.id }
+
             cycleRef.update("logs", updatedLogs)
                 .addOnSuccessListener { fetchHistory() }
                 .addOnFailureListener { it.printStackTrace() }
@@ -181,6 +208,7 @@ class HistoryActivity : BaseActivity() {
 
     private fun showFilterDialog() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_history_filters, null)
+
         val cbSex = dialogView.findViewById<CheckBox>(R.id.filterSex)
         val cbMasturbation = dialogView.findViewById<CheckBox>(R.id.filterMasturbation)
         val cbPlanB = dialogView.findViewById<CheckBox>(R.id.filterPlanB)

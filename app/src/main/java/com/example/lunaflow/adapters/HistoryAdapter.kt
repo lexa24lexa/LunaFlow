@@ -1,6 +1,5 @@
 package com.example.lunaflow.adapters
 
-import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,7 +15,8 @@ import java.util.*
 
 class HistoryAdapter(
     private var items: List<HistoryItem>,
-    private val onLogClick: ((HistoryItem.Log) -> Unit)? = null
+    private val onLogClick: (HistoryItem.Log) -> Unit,
+    private val onDeleteClick: (HistoryItem.Log) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
@@ -24,7 +24,6 @@ class HistoryAdapter(
         private const val TYPE_LOG = 1
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     fun updateList(newItems: List<HistoryItem>) {
         items = newItems
         notifyDataSetChanged()
@@ -58,7 +57,9 @@ class HistoryAdapter(
 
     class DateHeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val dateText: TextView = view.findViewById(R.id.dateText)
-        fun bind(item: HistoryItem.DateHeader) { dateText.text = item.date }
+        fun bind(item: HistoryItem.DateHeader) {
+            dateText.text = item.date
+        }
     }
 
     inner class LogEntryViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -69,26 +70,33 @@ class HistoryAdapter(
         private val deleteButton: ImageButton = view.findViewById(R.id.deleteButton)
 
         fun bind(log: LogEntry, wrapper: HistoryItem.Log) {
+
             val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
             timeText.text = sdf.format(Date(log.timestamp))
 
-            typeText.text = when(log.type) {
+            typeText.text = when (log.type) {
                 "activity" -> "Activity"
                 "symptoms" -> "Symptom"
                 else -> "Log"
             }
 
             icon.setImageResource(
-                when(log.type) {
+                when (log.type) {
                     "activity" -> R.drawable.ic_activity
                     "symptoms" -> R.drawable.ic_symptom
                     else -> R.drawable.ic_event
                 }
             )
 
-            itemView.setOnClickListener { onLogClick?.invoke(wrapper) }
-            editButton.setOnClickListener { onLogClick?.invoke(wrapper) }
-            deleteButton.setOnClickListener { onLogClick?.invoke(wrapper) }
+            itemView.setOnClickListener { onLogClick(wrapper) }
+
+            deleteButton.setOnClickListener {
+                onDeleteClick(wrapper)
+            }
+
+            editButton.setOnClickListener {
+                // reservado para Update depois
+            }
         }
     }
 }
