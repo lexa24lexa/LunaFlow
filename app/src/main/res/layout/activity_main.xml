@@ -64,31 +64,42 @@
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="200dp"
                     android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
                     android:orientation="vertical"
+                    android:gravity="center"
                     android:background="@drawable/rounded_background"
-                    android:padding="16dp"
-                    android:layout_marginEnd="8dp">
+                    android:padding="16dp">
 
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/adviceRecyclerView"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="match_parent"
                         android:scrollbars="vertical"
                         android:overScrollMode="never"
                         android:clipToPadding="false"
                         android:background="@android:color/transparent"/>
                 </LinearLayout>
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/frequentSymptomRecyclerView"
+                <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="200dp"
                     android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:orientation="vertical"
                     android:background="@drawable/rounded_background"
-                    android:padding="16dp"
-                    android:scrollbars="vertical"/>
+                    android:padding="16dp">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/frequentSymptomRecyclerView"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scrollbars="vertical"
+                        android:overScrollMode="never"
+                        android:clipToPadding="false"
+                        android:background="@android:color/transparent"/>
+                </LinearLayout>
             </LinearLayout>
 
             <!-- calendar section -->
