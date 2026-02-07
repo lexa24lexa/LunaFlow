@@ -1,15 +1,20 @@
 package com.example.lunaflow.adapters
 
+import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.example.lunaflow.R
+import com.example.lunaflow.activities.LogActivityActivity
+import com.example.lunaflow.activities.LogSymptomActivity
 import com.example.lunaflow.models.HistoryItem
 import com.example.lunaflow.models.LogEntry
+import com.example.lunaflow.models.LogType
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -75,15 +80,15 @@ class HistoryAdapter(
             timeText.text = sdf.format(Date(log.timestamp))
 
             typeText.text = when (log.type) {
-                "activity" -> "Activity"
-                "symptoms" -> "Symptom"
+                LogType.activity -> "Activity"
+                LogType.symptoms -> "Symptom"
                 else -> "Log"
             }
 
             icon.setImageResource(
                 when (log.type) {
-                    "activity" -> R.drawable.ic_activity
-                    "symptoms" -> R.drawable.ic_symptom
+                    LogType.activity -> R.drawable.ic_activity
+                    LogType.symptoms -> R.drawable.ic_symptom
                     else -> R.drawable.ic_event
                 }
             )
@@ -95,7 +100,24 @@ class HistoryAdapter(
             }
 
             editButton.setOnClickListener {
-                // reservado para Update depois
+                val context = itemView.context
+                when (log.type) {
+                    LogType.activity -> {
+                        val intent = Intent(context, LogActivityActivity::class.java)
+                        intent.putExtra("cycleId", wrapper.logEntry.cycleId)
+                        intent.putExtra("logEntry", wrapper.logEntry)
+                        context.startActivity(intent)
+                    }
+                    LogType.symptoms -> {
+                        val intent = Intent(context, LogSymptomActivity::class.java)
+                        intent.putExtra("cycleId", wrapper.logEntry.cycleId)
+                        intent.putExtra("logEntry", wrapper.logEntry)
+                        context.startActivity(intent)
+                    }
+                    else -> {
+                        Toast.makeText(context, "Unknown log type", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }
     }

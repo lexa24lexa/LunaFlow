@@ -4,6 +4,8 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+apply(plugin = "kotlin-parcelize")
+
 android {
     namespace = "com.example.lunaflow"
     compileSdk = 34

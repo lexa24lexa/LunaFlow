@@ -13,10 +13,11 @@ import java.util.*
 
 class LogSymptomActivity : BaseActivity() {
 
+    private var editingLogEntry: LogEntry? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Make sure user is logged in
         if (auth.currentUser == null) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
@@ -29,8 +30,34 @@ class LogSymptomActivity : BaseActivity() {
         showBottomNav(true)
         setupBottomNav()
 
+        editingLogEntry = intent.getParcelableExtra("logEntry")
+        editingLogEntry?.let { prefillFields(it) }
+
         findViewById<Button>(R.id.saveButton).setOnClickListener { saveSymptoms() }
         findViewById<Button>(R.id.cancelButton).setOnClickListener { finish() }
+    }
+
+    private fun prefillFields(log: LogEntry) {
+        val data = log.data
+
+        findViewById<CheckBox>(R.id.nausea).isChecked = (data["nausea"] as? Boolean) ?: false
+        findViewById<CheckBox>(R.id.headache).isChecked = (data["headache"] as? Boolean) ?: false
+        findViewById<CheckBox>(R.id.cramps).isChecked = (data["cramps"] as? Boolean) ?: false
+        findViewById<CheckBox>(R.id.bloating).isChecked = (data["bloating"] as? Boolean) ?: false
+        findViewById<CheckBox>(R.id.dizziness).isChecked = (data["dizziness"] as? Boolean) ?: false
+        findViewById<CheckBox>(R.id.fatigue).isChecked = (data["fatigue"] as? Boolean) ?: false
+        findViewById<CheckBox>(R.id.moodSwings).isChecked = (data["moodSwings"] as? Boolean) ?: false
+        findViewById<CheckBox>(R.id.anxiety).isChecked = (data["anxiety"] as? Boolean) ?: false
+        findViewById<CheckBox>(R.id.irritability).isChecked = (data["irritability"] as? Boolean) ?: false
+
+        findViewById<EditText>(R.id.otherSymptoms).setText(data["otherSymptoms"] as? String ?: "")
+
+        val flowGroup = findViewById<RadioGroup>(R.id.flowRadioGroup)
+        when (data["flow"] as? String) {
+            "Light" -> flowGroup.check(R.id.flowLight)
+            "Medium" -> flowGroup.check(R.id.flowMedium)
+            "Heavy" -> flowGroup.check(R.id.flowHeavy)
+        }
     }
 
     private fun saveSymptoms() {
@@ -39,7 +66,6 @@ class LogSymptomActivity : BaseActivity() {
         val db = FirebaseFirestore.getInstance()
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
 
-        // Collect symptoms
         val nausea = findViewById<CheckBox>(R.id.nausea).isChecked
         val headache = findViewById<CheckBox>(R.id.headache).isChecked
         val cramps = findViewById<CheckBox>(R.id.cramps).isChecked
@@ -65,7 +91,6 @@ class LogSymptomActivity : BaseActivity() {
             return
         }
 
-        // Convert to Firestore-safe Map<String, Any?>
         val symptomsMap: MutableMap<String, Any> = mutableMapOf(
             "nausea" to nausea,
             "headache" to headache,
@@ -77,11 +102,13 @@ class LogSymptomActivity : BaseActivity() {
             "anxiety" to anxiety,
             "irritability" to irritability
         )
-        if (otherSymptomsText.isNotEmpty()) {
-            symptomsMap["otherSymptoms"] = otherSymptomsText
-        }
+        if (otherSymptomsText.isNotEmpty()) symptomsMap["otherSymptoms"] = otherSymptomsText
+        selectedFlow?.let { symptomsMap["flow"] = it }
 
-        val logEntry = LogEntry(
+        val logEntry = editingLogEntry?.copy(
+            timestamp = System.currentTimeMillis(),
+            data = symptomsMap
+        ) ?: LogEntry(
             id = UUID.randomUUID().toString(),
             type = LogType.symptoms,
             timestamp = System.currentTimeMillis(),
@@ -90,50 +117,51 @@ class LogSymptomActivity : BaseActivity() {
             data = symptomsMap
         )
 
-        // 1️⃣ Save log entry in logs subcollection (like Activity does)
-        db.collection("users").document(userId).collection("logs")
-            .add(logEntry)
-            .addOnSuccessListener {
-                // 2️⃣ Update or create today's cycle record
-                val cycleRef = db.collection("users").document(userId)
-                    .collection("cycle_records").document(todayStr)
+        val logsCollection = db.collection("users").document(userId).collection("logs")
+        if (editingLogEntry != null) {
+            logsCollection.document(editingLogEntry!!.id).set(logEntry)
+        } else {
+            logsCollection.add(logEntry)
+        }
 
-                cycleRef.get().addOnSuccessListener { snapshot ->
-                    if (snapshot.exists()) {
-                        val record = snapshot.toObject(CycleRecord::class.java)
-                        val updatedLogs = record?.logs?.toMutableList() ?: mutableListOf()
-                        updatedLogs.add(logEntry)
+        val cycleRef = db.collection("users").document(userId)
+            .collection("cycle_records").document(todayStr)
 
-                        val updates: MutableMap<String, Any?> = mutableMapOf(
-                            "logs" to updatedLogs,
-                            "phase" to resolvePhaseForDate(record, selectedFlow),
-                            "isManual" to true
-                        )
-                        selectedFlow?.let { updates["flow"] = it }
-                        cycleRef.update(updates)
-                    } else {
-                        val newRecord = CycleRecord(
-                            id = todayStr,
-                            date = todayStr,
-                            phase = if (selectedFlow != null) "Menstruation" else "Unknown",
-                            flow = selectedFlow ?: "None",
-                            logs = listOf(logEntry),
-                            isManual = true
-                        )
-                        cycleRef.set(newRecord)
-                    }
-                }
+        cycleRef.get().addOnSuccessListener { snapshot ->
+            val record = snapshot.toObject(CycleRecord::class.java)
+            val updatedLogs = record?.logs?.toMutableList() ?: mutableListOf()
+            editingLogEntry?.let {
+                val index = updatedLogs.indexOfFirst { it.id == editingLogEntry!!.id }
+                if (index >= 0) updatedLogs[index] = logEntry
+                else updatedLogs.add(logEntry)
+            } ?: updatedLogs.add(logEntry)
 
-                Toast.makeText(this, "Symptoms saved", Toast.LENGTH_SHORT).show()
-                finish()
+            val updates: MutableMap<String, Any?> = mutableMapOf(
+                "logs" to updatedLogs,
+                "phase" to resolvePhaseForDate(record, selectedFlow),
+                "isManual" to true
+            )
+            selectedFlow?.let { updates["flow"] = it }
+
+            if (snapshot.exists()) cycleRef.update(updates)
+            else {
+                val newRecord = CycleRecord(
+                    id = todayStr,
+                    date = todayStr,
+                    phase = if (selectedFlow != null) "Menstruation" else "Unknown",
+                    flow = selectedFlow ?: "None",
+                    logs = listOf(logEntry),
+                    isManual = true
+                )
+                cycleRef.set(newRecord)
             }
-            .addOnFailureListener {
-                Toast.makeText(this, "Failed to save symptoms", Toast.LENGTH_SHORT).show()
-            }
+        }
+
+        Toast.makeText(this, if (editingLogEntry != null) "Symptoms updated" else "Symptoms saved", Toast.LENGTH_SHORT).show()
+        finish()
     }
 
     private fun resolvePhaseForDate(record: CycleRecord?, selectedFlow: String?): String {
-        return if (selectedFlow != null) "Menstruation"
-        else record?.phase ?: "Unknown"
+        return if (selectedFlow != null) "Menstruation" else record?.phase ?: "Unknown"
     }
 }

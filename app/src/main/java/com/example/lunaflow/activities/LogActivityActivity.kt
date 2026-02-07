@@ -17,6 +17,8 @@ class LogActivityActivity : BaseActivity() {
     private lateinit var otherMedSpinner: Spinner
     private val riskyMeds = mutableListOf<String>()
 
+    private var editingLogEntry: LogEntry? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentLayout(R.layout.activity_log_activity)
@@ -45,20 +47,60 @@ class LogActivityActivity : BaseActivity() {
 
         fetchMedicationsFromFirebase()
 
+        editingLogEntry = intent.getParcelableExtra("logEntry")
+        editingLogEntry?.let { prefillFields(it) }
+
         findViewById<Button>(R.id.saveButton).setOnClickListener { saveActivity() }
         findViewById<Button>(R.id.cancelButton).setOnClickListener { finish() }
+    }
+
+    private fun prefillFields(log: LogEntry) {
+        val data = log.data
+
+        findViewById<CheckBox>(R.id.sex).isChecked = data["sex"] as? Boolean ?: false
+        findViewById<CheckBox>(R.id.masturbation).isChecked = data["masturbation"] as? Boolean ?: false
+        findViewById<CheckBox>(R.id.planBPill).isChecked = data["planBPill"] as? Boolean ?: false
+        findViewById<CheckBox>(R.id.birthControl).isChecked = data["birthControl"] as? Boolean ?: false
+        val hasOtherMed = (data["otherMedication"] as? String)?.isNotEmpty() ?: false
+        findViewById<CheckBox>(R.id.otherMedication).isChecked = hasOtherMed
+
+        findViewById<LinearLayout>(R.id.sexOptionsLayout).visibility =
+            if (findViewById<CheckBox>(R.id.sex).isChecked) View.VISIBLE else View.GONE
+        findViewById<LinearLayout>(R.id.planBOptionsLayout).visibility =
+            if (findViewById<CheckBox>(R.id.planBPill).isChecked) View.VISIBLE else View.GONE
+        otherMedSpinner.visibility = if (hasOtherMed) View.VISIBLE else View.GONE
+
+        findViewById<EditText>(R.id.sexDetails).setText(data["sexDetails"] as? String ?: "")
+        findViewById<EditText>(R.id.planBDetails).setText(data["planBDetails"] as? String ?: "")
+
+        val protection = data["protectionUsed"] as? String
+        findViewById<RadioButton>(R.id.usedProtectionYes).isChecked = protection == "Yes"
+        findViewById<RadioButton>(R.id.usedProtectionNo).isChecked = protection != "Yes"
+
+        val otherMed = data["otherMedication"] as? String
+        if (otherMed != null && otherMed.isNotEmpty() && riskyMeds.isNotEmpty()) {
+            val index = riskyMeds.indexOf(otherMed)
+            if (index >= 0) otherMedSpinner.setSelection(index)
+        }
     }
 
     private fun fetchMedicationsFromFirebase() {
         FirebaseFirestore.getInstance().collection("medications").get()
             .addOnSuccessListener { docs ->
                 riskyMeds.clear()
-                for (doc in docs) {
-                    doc.getString("name")?.let { riskyMeds.add(it) }
-                }
+                for (doc in docs) doc.getString("name")?.let { riskyMeds.add(it) }
                 val medAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, riskyMeds)
                 medAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                 otherMedSpinner.adapter = medAdapter
+
+                // refresh spinner selection if editing
+                editingLogEntry?.let { log ->
+                    val otherMed = log.data["otherMedication"] as? String
+                    if (otherMed != null && otherMed.isNotEmpty()) {
+                        val index = riskyMeds.indexOf(otherMed)
+                        if (index >= 0) otherMedSpinner.setSelection(index)
+                    }
+                }
             }
     }
 
@@ -85,13 +127,19 @@ class LogActivityActivity : BaseActivity() {
         )
 
         if (sexChecked) {
-            val protection = if (findViewById<RadioButton>(R.id.usedProtectionYes).isChecked) "Yes" else "No"
-            activityData["protectionUsed"] = protection
+            activityData["protectionUsed"] = if (findViewById<RadioButton>(R.id.usedProtectionYes).isChecked) "Yes" else "No"
             activityData["sexDetails"] = findViewById<EditText>(R.id.sexDetails).text.toString().trim()
         }
 
-        val logEntry = LogEntry(
-            id = UUID.randomUUID().toString(), // unique ID to avoid Firebase crash
+        if (planBChecked) {
+            activityData["planBDetails"] = findViewById<EditText>(R.id.planBDetails).text.toString().trim()
+        }
+
+        val log = editingLogEntry?.copy(
+            timestamp = System.currentTimeMillis(),
+            data = activityData
+        ) ?: LogEntry(
+            id = UUID.randomUUID().toString(),
             type = LogType.activity,
             timestamp = System.currentTimeMillis(),
             title = "Activity",
@@ -99,41 +147,40 @@ class LogActivityActivity : BaseActivity() {
             data = activityData
         )
 
-        // save in logs subcollection
-        db.collection("users").document(userId).collection("logs")
-            .add(logEntry)
-            .addOnSuccessListener {
-                updateCycleRecord(userId, todayStr, logEntry)
-                Toast.makeText(this, "Activity saved", Toast.LENGTH_SHORT).show()
-                finish()
-            }
-            .addOnFailureListener {
-                Toast.makeText(this, "Failed to save activity", Toast.LENGTH_SHORT).show()
-            }
-    }
+        val logsCollection = db.collection("users").document(userId).collection("logs")
+        if (editingLogEntry != null) {
+            logsCollection.document(editingLogEntry!!.id).set(log)
+        } else {
+            logsCollection.add(log)
+        }
 
-    private fun updateCycleRecord(userId: String, dateStr: String, logEntry: LogEntry) {
-        val cycleRecordRef = FirebaseFirestore.getInstance()
-            .collection("users").document(userId)
-            .collection("cycle_records").document(dateStr)
+        val cycleRef = db.collection("users").document(userId)
+            .collection("cycle_records").document(todayStr)
 
-        cycleRecordRef.get().addOnSuccessListener { snapshot ->
-            if (snapshot.exists()) {
-                val record = snapshot.toObject(CycleRecord::class.java)
-                val updatedLogs = record?.logs?.toMutableList() ?: mutableListOf()
-                updatedLogs.add(logEntry)
-                cycleRecordRef.update("logs", updatedLogs)
-            } else {
+        cycleRef.get().addOnSuccessListener { snapshot ->
+            val record = snapshot.toObject(CycleRecord::class.java)
+            val updatedLogs = record?.logs?.toMutableList() ?: mutableListOf()
+            editingLogEntry?.let {
+                val index = updatedLogs.indexOfFirst { it.id == editingLogEntry!!.id }
+                if (index >= 0) updatedLogs[index] = log
+                else updatedLogs.add(log)
+            } ?: updatedLogs.add(log)
+
+            if (snapshot.exists()) cycleRef.update("logs", updatedLogs)
+            else {
                 val newRecord = CycleRecord(
-                    id = dateStr,
-                    date = dateStr,
+                    id = todayStr,
+                    date = todayStr,
                     phase = "luteal",
                     flow = "None",
-                    logs = listOf(logEntry),
+                    logs = listOf(log),
                     isManual = true
                 )
-                cycleRecordRef.set(newRecord)
+                cycleRef.set(newRecord)
             }
         }
+
+        Toast.makeText(this, if (editingLogEntry != null) "Activity updated" else "Activity saved", Toast.LENGTH_SHORT).show()
+        finish()
     }
 }
