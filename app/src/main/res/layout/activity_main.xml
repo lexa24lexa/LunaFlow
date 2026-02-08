@@ -3,7 +3,8 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/white">
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
@@ -24,7 +25,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:gravity="center_horizontal">
+                android:gravity="center_horizontal"
+                android:background="@drawable/rounded_background"
+                android:padding="16dp">
 
                 <TextView
                     android:id="@+id/currentPhase"
@@ -33,6 +36,7 @@
                     android:text="Loading..."
                     android:textSize="18sp"
                     android:textStyle="bold"
+                    android:textColor="@color/textPrimary"
                     android:gravity="center" />
 
                 <LinearLayout
@@ -49,6 +53,7 @@
                         android:layout_height="wrap_content"
                         android:text="Loading..."
                         android:textSize="14sp"
+                        android:textColor="@color/textSecondary"
                         android:gravity="center" />
                 </LinearLayout>
             </LinearLayout>
@@ -123,7 +128,8 @@
                         android:layout_height="40dp"
                         android:background="@android:color/transparent"
                         android:src="@drawable/ic_arrow_left"
-                        android:contentDescription="Previous month" />
+                        android:contentDescription="Previous month"
+                        app:tint="@color/textPrimary" />
 
                     <TextView
                         android:id="@+id/calendarMonthYear"
@@ -133,6 +139,7 @@
                         android:text="Loading..."
                         android:textSize="18sp"
                         android:textStyle="bold"
+                        android:textColor="@color/textPrimary"
                         android:gravity="center" />
 
                     <ImageButton
@@ -141,7 +148,8 @@
                         android:layout_height="40dp"
                         android:background="@android:color/transparent"
                         android:src="@drawable/ic_arrow_right"
-                        android:contentDescription="Next month" />
+                        android:contentDescription="Next month"
+                        app:tint="@color/textPrimary" />
                 </LinearLayout>
 
                 <!-- Week days -->
@@ -152,13 +160,13 @@
                     android:gravity="center"
                     android:layout_marginBottom="8dp">
 
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="S"/>
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="M"/>
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="T"/>
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="W"/>
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="T"/>
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="F"/>
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="S"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="S" android:textColor="@color/textSecondary"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="M" android:textColor="@color/textSecondary"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="T" android:textColor="@color/textSecondary"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="W" android:textColor="@color/textSecondary"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="T" android:textColor="@color/textSecondary"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="F" android:textColor="@color/textSecondary"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="S" android:textColor="@color/textSecondary"/>
                 </LinearLayout>
 
                 <GridLayout

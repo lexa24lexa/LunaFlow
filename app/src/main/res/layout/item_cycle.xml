@@ -3,21 +3,22 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:background="@color/cardBackground">
 
     <TextView
         android:id="@+id/tvDate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textStyle="bold"
-        android:textColor="@android:color/black"
+        android:textColor="@color/textPrimary"
         android:textSize="16sp"/>
 
     <TextView
         android:id="@+id/tvSymptoms"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@android:color/black"
+        android:textColor="@color/textSecondary"
         android:textSize="14sp"
         android:layout_marginTop="4dp"/>
 </LinearLayout>

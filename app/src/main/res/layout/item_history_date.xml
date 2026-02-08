@@ -6,4 +6,4 @@
     android:textStyle="bold"
     android:paddingTop="12dp"
     android:paddingBottom="4dp"
-    android:textColor="#000"/>
+    android:textColor="@color/textPrimary"/>

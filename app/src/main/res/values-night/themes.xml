@@ -1,16 +1,45 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Theme.LunaFlow" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/purple_200</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/black</item>
-        <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/teal_200</item>
-        <item name="colorSecondaryVariant">@color/teal_200</item>
-        <item name="colorOnSecondary">@color/black</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
-        <!-- Customize your theme here. -->
+
+    <style name="Theme.LunaFlow" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/colorBackground</item>
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorOnPrimary">@color/textOnPrimary</item>
+        <item name="colorSecondary">@color/mainRed</item>
+        <item name="colorOnSecondary">@color/textOnSecondary</item>
+        <item name="android:statusBarColor">@color/colorPrimary</item>
+        <item name="actionBarTheme">@style/AppActionBar</item>
+        <item name="bottomNavigationStyle">@style/BottomNavStyle</item>
+    </style>
+
+    <style name="AppActionBar" parent="Widget.MaterialComponents.Toolbar">
+        <item name="android:layout_height">48dp</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:background">@color/colorPrimary</item>
+        <item name="titleTextColor">@color/textPrimary</item>
+        <item name="subtitleTextColor">@color/textPrimary</item>
+        <item name="android:theme">@style/ToolbarTextTheme</item>
+    </style>
+
+    <style name="ToolbarTextTheme" parent="ThemeOverlay.MaterialComponents.ActionBar">
+        <item name="android:textColorPrimary">@color/textPrimary</item>
+        <item name="android:textColorSecondary">@color/textPrimary</item>
+        <item name="android:textColor">@color/textPrimary</item>
+    </style>
+
+    <style name="BottomNavText">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">@color/textPrimary</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+
+    <style name="BottomNavText.Selected">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">@color/mainRed</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="BottomNavStyle" parent="Widget.MaterialComponents.BottomNavigationView">
+        <item name="android:layout_height">30dp</item>
+        <item name="android:background">@color/colorPrimary</item>
     </style>
 </resources>
