@@ -17,7 +17,10 @@ class NotificationsActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentLayout(R.layout.activity_notifications)
-        setToolbarTitle("Notificações")
+        setToolbarTitle("LunaFlow")
+        setupBottomNav()
+        showToolbar(true)
+        showBottomNav(true)
 
         recyclerView = findViewById(R.id.recyclerViewNotifications)
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -29,14 +32,27 @@ class NotificationsActivity : BaseActivity() {
 
     // busca notificações do firestore
     private fun fetchNotifications() {
+
+        val currentUser = com.google.firebase.auth.FirebaseAuth
+            .getInstance()
+            .currentUser ?: return
+
         val db = FirebaseFirestore.getInstance()
-        db.collection("notifications")
+
+        db.collection("users")
+            .document(currentUser.uid)
+            .collection("notifications")
+            .orderBy("timestamp")
             .get()
             .addOnSuccessListener { result ->
+
                 notificationsList.clear()
+
                 for (document in result) {
-                    notificationsList.add(document.getString("message") ?: "")
+                    val message = document.getString("message") ?: ""
+                    notificationsList.add(message)
                 }
+
                 adapter.notifyDataSetChanged()
             }
     }

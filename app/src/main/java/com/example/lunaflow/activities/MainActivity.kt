@@ -60,10 +60,8 @@ class MainActivity : BaseActivity() {
 
         // layout e toolbar
         setContentLayout(R.layout.activity_main)
+        setSupportActionBar(toolbar)
         setToolbarTitle("LunaFlow")
-        showToolbar(true)
-        showBottomNav(true)
-        setupBottomNav(R.id.nav_home)
 
         // bind views
         currentPhaseText = findViewById(R.id.currentPhase)

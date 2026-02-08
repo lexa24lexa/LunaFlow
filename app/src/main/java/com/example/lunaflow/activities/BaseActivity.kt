@@ -22,6 +22,7 @@ import com.example.lunaflow.R
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 abstract class BaseActivity : AppCompatActivity() {
 
@@ -65,6 +66,12 @@ abstract class BaseActivity : AppCompatActivity() {
 
         val container = findViewById<FrameLayout>(R.id.container)
         layoutInflater.inflate(layoutRes, container, true)
+
+        setupBottomNav()
+        selectCurrentNavItem()
+
+        showToolbar(true)
+        showBottomNav(true)
     }
 
     // configura bottom navigation
@@ -112,6 +119,20 @@ abstract class BaseActivity : AppCompatActivity() {
         }
     }
 
+    protected fun selectCurrentNavItem() {
+
+        when (this) {
+            is MainActivity ->
+                bottomNav.selectedItemId = R.id.nav_home
+
+            is HistoryActivity ->
+                bottomNav.selectedItemId = R.id.nav_history
+
+            is ProfileActivity ->
+                bottomNav.selectedItemId = R.id.nav_profile
+        }
+    }
+
     // mostra ou esconde toolbar
     protected fun showToolbar(show: Boolean) {
         if (::toolbar.isInitialized) {
@@ -127,8 +148,9 @@ abstract class BaseActivity : AppCompatActivity() {
     }
 
     // infla menu da toolbar
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.toolbar_menu, menu)
+        loadNotificationCount(menu)
         return true
     }
 
@@ -189,5 +211,25 @@ abstract class BaseActivity : AppCompatActivity() {
         with(NotificationManagerCompat.from(this)) {
             notify(System.currentTimeMillis().toInt(), builder.build())
         }
+    }
+
+    private fun loadNotificationCount(menu: Menu) {
+
+        val currentUser = FirebaseAuth.getInstance().currentUser ?: return
+        val db = FirebaseFirestore.getInstance()
+
+        db.collection("users")
+            .document(currentUser.uid)
+            .collection("notifications")
+            .get()
+            .addOnSuccessListener { result ->
+
+                val count = result.size()
+                val item = menu.findItem(R.id.action_notifications)
+
+                if (count > 0) {
+                    item.title = "Notifications ($count)"
+                }
+            }
     }
 }

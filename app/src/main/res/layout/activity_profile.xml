@@ -12,15 +12,6 @@
         android:orientation="vertical">
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="LunaFlow"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="#000"
-            android:layout_marginBottom="24dp"/>
-
-        <TextView
             android:text="Preferences visual + calendar display"
             android:textSize="16sp"
             android:paddingVertical="12dp"
@@ -40,6 +31,19 @@
             android:paddingVertical="12dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
+
+        <Switch
+            android:id="@+id/switchBirthControlReminder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Daily birth control reminder"/>
+
+        <TextView
+            android:id="@+id/textReminderTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Reminder time: Not set"
+            android:paddingVertical="12dp"/>
 
         <TextView
             android:text="Language"

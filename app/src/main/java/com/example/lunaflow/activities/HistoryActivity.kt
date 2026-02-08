@@ -28,6 +28,7 @@ class HistoryActivity : BaseActivity() {
         setContentLayout(R.layout.activity_history)
 
         setSupportActionBar(toolbar)
+        setToolbarTitle("LunaFlow")
         supportActionBar?.title = "History"
         supportActionBar?.setDisplayHomeAsUpEnabled(false)
 
@@ -43,11 +44,6 @@ class HistoryActivity : BaseActivity() {
         recyclerView.adapter = adapter
 
         fetchHistory()
-
-        setToolbarTitle("LunaFlow")
-        setupBottomNav(R.id.nav_history)
-        showToolbar(true)
-        showBottomNav(true)
     }
 
     @SuppressLint("NotifyDataSetChanged")

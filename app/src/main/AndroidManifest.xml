@@ -38,6 +38,8 @@
             </intent-filter>
         </service>
 
+        <receiver android:name=".receivers.BirthControlReceiver"/>
+
     </application>
 
 </manifest>

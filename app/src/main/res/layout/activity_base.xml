@@ -13,7 +13,8 @@
         android:title="LunaFlow"
         android:titleTextColor="@color/mainBrown"
         app:titleCentered="true"
-        android:elevation="4dp"/>
+        android:elevation="4dp"
+        app:popupTheme="@style/ThemeOverlay.MaterialComponents.Light" />
 
     <FrameLayout
         android:id="@+id/container"

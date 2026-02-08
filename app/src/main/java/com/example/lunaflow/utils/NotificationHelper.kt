@@ -18,7 +18,7 @@ object NotificationHelper {
     private var notificationId = 0
     private val auth = FirebaseAuth.getInstance()
 
-    // cria canal de notificações
+    // creates notifications channel
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "LunaFlow Notifications"
@@ -33,9 +33,8 @@ object NotificationHelper {
         }
     }
 
-    // envia notificação local
+    // local notification
     fun sendNotification(context: Context, message: String) {
-        // verifica permissão android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
@@ -45,37 +44,31 @@ object NotificationHelper {
             }
         }
 
-        // constrói notificação
+        // builds notification
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("LunaFlow Alert")
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
-        // mostra notificação
+        // shows notification
         with(NotificationManagerCompat.from(context)) {
             notify(notificationId++, builder.build())
         }
 
-        // guarda notificação no firestore geral
-        val db = FirebaseFirestore.getInstance()
-        val notificationMap = hashMapOf(
-            "message" to message,
-            "timestamp" to System.currentTimeMillis()
-        )
-        db.collection("notifications").add(notificationMap)
-
-        // guarda notificação no utilizador
+        // saves notification in firestore (only if user exists)
         val currentUser = auth.currentUser
         if (currentUser != null) {
+            val db = FirebaseFirestore.getInstance()
+            val notificationMap = hashMapOf(
+                "message" to message,
+                "timestamp" to System.currentTimeMillis()
+            )
+
             db.collection("users")
                 .document(currentUser.uid)
                 .collection("notifications")
                 .add(notificationMap)
-                .addOnSuccessListener { Log.d("NotificationHelper", "notification saved for user") }
-                .addOnFailureListener { e ->
-                    Log.e("NotificationHelper", "failed to save notification", e)
-                }
         }
     }
 }
