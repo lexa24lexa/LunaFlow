@@ -4,10 +4,12 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.preference.PreferenceManager
+import android.widget.ImageView
 import android.widget.Switch
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
+import com.bumptech.glide.Glide
 import com.example.lunaflow.R
 import com.google.firebase.auth.FirebaseAuth
 
@@ -15,7 +17,6 @@ class ProfileActivity : BaseActivity() {
 
     private lateinit var prefs: SharedPreferences
 
-    // inicializa activity e mostra perfil
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -32,29 +33,42 @@ class ProfileActivity : BaseActivity() {
         showToolbar(true)
         showBottomNav(true)
 
-
         prefs = PreferenceManager.getDefaultSharedPreferences(this)
 
+        // USER INFO CARD
+        val user = FirebaseAuth.getInstance().currentUser
+        val userName = findViewById<TextView>(R.id.userName)
+        val userEmail = findViewById<TextView>(R.id.userEmail)
+        val userAvatar = findViewById<ImageView>(R.id.userAvatar)
+
+        userName.text = user?.displayName ?: "No Name"
+        userEmail.text = user?.email ?: "No Email"
+
+        val photoUrl = user?.photoUrl
+        if (photoUrl != null) {
+            Glide.with(this).load(photoUrl).circleCrop().into(userAvatar)
+        } else {
+            userAvatar.setImageResource(R.drawable.ic_user_placeholder)
+        }
+
+        // LOGOUT BUTTON
         val logoutButton = findViewById<TextView>(R.id.logoutButton)
         logoutButton.setOnClickListener {
             showLogoutConfirmation()
         }
 
+        // DARK MODE SWITCH
         val darkModeSwitch = findViewById<Switch>(R.id.darkModeSwitch)
-
-        // Initialize switch state
         val isDarkMode = prefs.getBoolean("dark_mode", false)
         darkModeSwitch.isChecked = isDarkMode
         setDarkMode(isDarkMode)
 
-        // Toggle listener
         darkModeSwitch.setOnCheckedChangeListener { _, isChecked ->
             setDarkMode(isChecked)
             prefs.edit().putBoolean("dark_mode", isChecked).apply()
         }
     }
 
-    // mostra dialogo de confirmacao de logout
     private fun showLogoutConfirmation() {
         AlertDialog.Builder(this)
             .setTitle("Log out")
@@ -64,7 +78,6 @@ class ProfileActivity : BaseActivity() {
             .show()
     }
 
-    // faz logout do usuario e volta para login
     private fun logout() {
         FirebaseAuth.getInstance().signOut()
         val intent = Intent(this, LoginActivity::class.java)
