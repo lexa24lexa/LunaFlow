@@ -69,6 +69,7 @@ class HistoryActivity : BaseActivity() {
                 for (doc in snapshot.documents) {
                     val record = doc.toObject(CycleRecord::class.java) ?: continue
                     val cycleId = doc.id
+                    if (record.logs.isEmpty()) continue
                     val recordDate = sdfRecord.parse(record.date) ?: continue
                     val dateStr = sdfDisplay.format(recordDate)
 
@@ -165,9 +166,15 @@ class HistoryActivity : BaseActivity() {
             val record = doc.toObject(CycleRecord::class.java) ?: return@addOnSuccessListener
             val updatedLogs = record.logs.filter { it.id != log.id }
 
-            cycleRef.update("logs", updatedLogs)
-                .addOnSuccessListener { fetchHistory() }
-                .addOnFailureListener { it.printStackTrace() }
+            if (updatedLogs.isEmpty()) {
+                cycleRef.delete()
+                    .addOnSuccessListener { fetchHistory() }
+                    .addOnFailureListener { it.printStackTrace() }
+            } else {
+                cycleRef.update("logs", updatedLogs)
+                    .addOnSuccessListener { fetchHistory() }
+                    .addOnFailureListener { it.printStackTrace() }
+            }
         }
     }
 }
