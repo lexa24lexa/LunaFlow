@@ -28,6 +28,7 @@ import java.util.*
 import androidx.core.content.edit
 import com.example.lunaflow.utils.NotificationHelper
 import android.Manifest
+import android.os.Handler
 
 class MainActivity : BaseActivity() {
 
@@ -51,7 +52,7 @@ class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // checa login
+        // login
         if (auth.currentUser == null) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
@@ -109,6 +110,9 @@ class MainActivity : BaseActivity() {
             ) sendAllNotifications()
             else requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else sendAllNotifications()
+
+        // daily reset for frequent symptoms
+        scheduleDailyReset()
     }
 
     // envia notificações
@@ -346,12 +350,55 @@ class MainActivity : BaseActivity() {
             }
     }
 
+    private fun getTodayStr(): String {
+        return SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
+    }
+
+    private fun isNewDay(): Boolean {
+        val prefs = getSharedPreferences("daily_symptoms", MODE_PRIVATE)
+        val lastDate = prefs.getString("last_date", null)
+        return lastDate != getTodayStr()
+    }
+
+    private fun updateLastDate() {
+        val prefs = getSharedPreferences("daily_symptoms", MODE_PRIVATE)
+        prefs.edit { putString("last_date", getTodayStr()) }
+    }
+
+    private fun scheduleDailyReset() {
+        val now = Calendar.getInstance()
+        val nextMidnight = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val delay = nextMidnight.timeInMillis - now.timeInMillis
+
+        Handler(mainLooper).postDelayed({
+            frequentSymptomRecyclerView.adapter =
+                SymptomAdviceAdapter(listOf("Please register symptoms today"))
+            updateLastDate()
+            scheduleDailyReset()
+        }, delay)
+    }
+
     // busca sintomas frequentes
     private fun fetchFrequentSymptoms(phase: String) {
         val currentUser = auth.currentUser ?: return
+        val todayStr = getTodayStr()
+
+        // If the day has changed, reset the panel immediately
+        if (isNewDay()) {
+            frequentSymptomRecyclerView.adapter =
+                SymptomAdviceAdapter(listOf("Please register symptoms today"))
+            updateLastDate()
+        }
 
         db.collection("users").document(currentUser.uid)
             .collection("cycle_records")
+            .whereEqualTo("date", todayStr) // only today
             .get()
             .addOnSuccessListener { snapshot ->
 
@@ -364,31 +411,39 @@ class MainActivity : BaseActivity() {
                     }
                 }.flatten()
 
-                val symptomFrequency = mutableMapOf<String, Int>()
+                if (symptomLogs.isEmpty()) {
+                    frequentSymptomRecyclerView.adapter =
+                        SymptomAdviceAdapter(listOf("Please register symptoms today"))
+                    return@addOnSuccessListener
+                }
 
+                val symptomFrequency = mutableMapOf<String, Int>()
                 symptomLogs.forEach { log ->
                     log.data.forEach { (key, value) ->
                         if (key.lowercase() != "flow" && value is Boolean && value) {
                             val symptomKey = key.lowercase()
-                            symptomFrequency[symptomKey] = symptomFrequency.getOrDefault(symptomKey, 0) + 1
+                            symptomFrequency[symptomKey] =
+                                symptomFrequency.getOrDefault(symptomKey, 0) + 1
                         }
                     }
                 }
 
                 if (symptomFrequency.isEmpty()) {
                     frequentSymptomRecyclerView.adapter =
-                        SymptomAdviceAdapter(listOf("No symptoms registered"))
+                        SymptomAdviceAdapter(listOf("Please register symptoms today"))
                     return@addOnSuccessListener
                 }
 
                 val symptomAdvices = mutableListOf<String>()
                 var loadedCount = 0
+
                 symptomFrequency.keys.forEach { symptom ->
                     getSymptomAdvice(phase, symptom) { advice ->
                         symptomAdvices.add("Symptom: ${symptom.replaceFirstChar { it.uppercase() }}\nAdvice: $advice")
                         loadedCount++
                         if (loadedCount == symptomFrequency.size) {
                             frequentSymptomRecyclerView.adapter = SymptomAdviceAdapter(symptomAdvices)
+                            updateLastDate()
                         }
                     }
                 }
