@@ -36,30 +36,11 @@
             android:layout_marginTop="16dp"
             android:layout_marginBottom="8dp"/>
 
-        <RadioGroup
-            android:id="@+id/flowRadioGroup"
-            android:layout_width="wrap_content"
+        <Spinner
+            android:id="@+id/flowSpinner"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <RadioButton
-                android:id="@+id/flowLight"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Light"/>
-
-            <RadioButton
-                android:id="@+id/flowMedium"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Medium"/>
-
-            <RadioButton
-                android:id="@+id/flowHeavy"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Heavy"/>
-        </RadioGroup>
+            android:spinnerMode="dropdown" />
 
         <!-- emotional symptoms options -->
         <TextView

@@ -1,5 +1,6 @@
 package com.example.lunaflow.activities
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,22 +14,25 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.example.lunaflow.R
 import com.example.lunaflow.adapters.AdviceAdapter
 import com.example.lunaflow.adapters.SymptomAdviceAdapter
-import com.example.lunaflow.models.CycleRecord
 import com.example.lunaflow.models.LogEntry
+import com.example.lunaflow.models.UserCycleProfile
+import com.example.lunaflow.utils.NotificationHelper
+import com.example.lunaflow.utils.PredictionEngine
+import com.example.lunaflow.workers.DailySymptomResetWorker
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.core.content.edit
-import com.example.lunaflow.utils.NotificationHelper
-import android.Manifest
-import android.os.Handler
+import java.util.concurrent.TimeUnit
 
 class MainActivity : BaseActivity() {
 
@@ -40,8 +44,10 @@ class MainActivity : BaseActivity() {
     private lateinit var frequentSymptomRecyclerView: RecyclerView
 
     private val db = FirebaseFirestore.getInstance()
-    private var cachedCycleRecords: List<CycleRecord> = emptyList()
     private var displayedCalendar = Calendar.getInstance()
+    private lateinit var userProfile: UserCycleProfile
+    private var cachedLogs: List<LogEntry> = emptyList()
+    private var logsByDate: Map<String, List<LogEntry>> = emptyMap()
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -52,21 +58,20 @@ class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // login
         if (auth.currentUser == null) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
         }
 
-        // layout e toolbar
+        userProfile = loadUserProfile()
+
         setContentLayout(R.layout.activity_main)
         setToolbarTitle("LunaFlow")
         showToolbar(true)
         showBottomNav(true)
         setupBottomNav(R.id.nav_home)
 
-        // bind views
         currentPhaseText = findViewById(R.id.currentPhase)
         nextCycleText = findViewById(R.id.nextCycle)
         adviceRecyclerView = findViewById(R.id.adviceRecyclerView)
@@ -74,36 +79,27 @@ class MainActivity : BaseActivity() {
         calendarMonthYear = findViewById(R.id.calendarMonthYear)
         frequentSymptomRecyclerView = findViewById(R.id.frequentSymptomRecyclerView)
 
-        // setup recycler views
         adviceRecyclerView.layoutManager = LinearLayoutManager(this)
         adviceRecyclerView.setHasFixedSize(true)
         frequentSymptomRecyclerView.layoutManager = LinearLayoutManager(this)
         frequentSymptomRecyclerView.setHasFixedSize(true)
 
-        // botão log
         findViewById<FloatingActionButton>(R.id.btnLogChoice).setOnClickListener {
             startActivity(Intent(this, LogChoiceActivity::class.java))
         }
 
-        // botão mês anterior
         findViewById<ImageButton>(R.id.btnPrevMonth).setOnClickListener {
             displayedCalendar.add(Calendar.MONTH, -1)
             setupCalendar()
         }
-
-        // botão próximo mês
         findViewById<ImageButton>(R.id.btnNextMonth).setOnClickListener {
             displayedCalendar.add(Calendar.MONTH, 1)
             setupCalendar()
         }
 
-        // busca registros e setup calendário
-        fetchCycleRecordsAndSetupCalendar()
+        fetchLogsAndSetupCalendar()
 
-        // cria canal de notificações
         NotificationHelper.createNotificationChannel(this)
-
-        // checa permissão notificações
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 == PackageManager.PERMISSION_GRANTED
@@ -111,114 +107,65 @@ class MainActivity : BaseActivity() {
             else requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else sendAllNotifications()
 
-        // daily reset for frequent symptoms
         scheduleDailyReset()
     }
 
-    // envia notificações
     private fun sendAllNotifications() {
         NotificationHelper.sendNotification(this, "Your period is late")
         NotificationHelper.sendNotification(this, "Period in 3 days")
         NotificationHelper.sendNotification(this, "Cycle is 3-8 days, looks normal")
     }
 
-    // busca registros do firestore
-    private fun fetchCycleRecordsAndSetupCalendar() {
+    private fun fetchLogsAndSetupCalendar() {
         val currentUser = auth.currentUser ?: return
 
         db.collection("users")
             .document(currentUser.uid)
-            .collection("cycle_records")
+            .collection("logs")
             .get()
             .addOnSuccessListener { snapshot ->
-                cachedCycleRecords = snapshot.documents.mapNotNull { doc ->
-                    try { doc.toObject(CycleRecord::class.java) } catch (e: Exception) { null }
-                }.sortedBy { it.date }
+                cachedLogs = snapshot.documents.mapNotNull {
+                    try { it.toObject(LogEntry::class.java) } catch (e: Exception) { null }
+                }
+                logsByDate = cachedLogs.groupBy { it.date }
 
-                // atualiza fase e calendário
                 handleCurrentPhaseAndNextCycle()
                 setupCalendar()
+                fetchFrequentSymptoms()
             }
             .addOnFailureListener {
-                Toast.makeText(this, "Failed to load cycle records.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Failed to load logs.", Toast.LENGTH_SHORT).show()
             }
     }
 
-    // calcula fase atual e próximo ciclo
+    private fun refreshLogsAndCalendar() {
+        fetchLogsAndSetupCalendar()
+    }
+
     private fun handleCurrentPhaseAndNextCycle() {
-        if (cachedCycleRecords.isEmpty()) {
-            currentPhaseText.text = "No cycle data yet"
-            nextCycleText.text = "Log your flow to start tracking your cycle"
-            return
-        }
+        val todayStr = getTodayStr()
+        val todayLogs = logsByDate[todayStr] ?: emptyList()
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse(todayStr)!!
 
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
-        val today = sdf.parse(sdf.format(Date())) ?: return
-        // registros menstruais manuais
-        val menstruationRecords =
-            cachedCycleRecords.filter { it.phase.lowercase() == "menstruation" && it.isManual }
-
-        var start: Date? = null
-        var end: Date? = null
-        var duration = 0
-
-        if (menstruationRecords.isNotEmpty()) {
-            end = sdf.parse(menstruationRecords.last().date)
-            var current = end
-            var index = menstruationRecords.size - 1
-            while (index >= 0 && current != null) {
-                val recordDate = sdf.parse(menstruationRecords[index].date)
-                val diff = (current.time - recordDate.time) / (1000 * 60 * 60 * 24)
-                if (diff <= 1) {
-                    start = recordDate
-                    duration++
-                    current = recordDate
-                    index--
-                } else break
-            }
-        }
-
-        // checa se menstruando hoje
-        val isMenstruating = menstruationRecords.any { record ->
-            val recordDate = sdf.parse(record.date) ?: return@any false
-            val flowDuration = when (record.flow?.lowercase()) {
-                "light" -> 3
-                "medium" -> 5
-                "heavy" -> 7
-                else -> 5
-            }
-            val endDate = Calendar.getInstance()
-                .apply { time = recordDate; add(Calendar.DAY_OF_MONTH, flowDuration - 1) }.time
-            !today.before(recordDate) && !today.after(endDate)
-        }
-
-        // define fase atual
-        val currentPhase =
-            if (isMenstruating) "Menstruation" else resolvePhaseForDate(sdf.format(today))
+        val currentPhase = PredictionEngine.calculatePhase(today, userProfile, todayLogs)
         currentPhaseText.text = "You are in $currentPhase Phase"
-
-        // busca conselhos e sintomas
         fetchAdviceForPhase(currentPhase)
-        fetchFrequentSymptoms(currentPhase)
 
-        // calcula próximo ciclo
-        if (start != null) {
-            val cal = Calendar.getInstance().apply { time = start; add(Calendar.DAY_OF_MONTH, 28) }
-            val daysLeft =
-                ((cal.timeInMillis - Calendar.getInstance().timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
-            nextCycleText.text =
-                "Next cycle in $daysLeft days, scheduled for ${
-                    SimpleDateFormat(
-                        "MMMM dd",
-                        Locale.ENGLISH
-                    ).format(cal.time)
-                }"
-        } else {
-            nextCycleText.text = "Next cycle date unavailable"
+        val flowLogs = cachedLogs.filter { it.type.lowercase() == "flow" && it.data["flow"] is String }
+        val lastPeriodStartStr = flowLogs.maxByOrNull { it.timestamp }?.date ?: userProfile.lastPeriodStart
+        val lastPeriodStart = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse(lastPeriodStartStr)!!
+
+        val nextCycleDate = Calendar.getInstance().apply {
+            time = lastPeriodStart
+            add(Calendar.DAY_OF_MONTH, userProfile.cycleLength)
         }
+        val daysLeft = ((nextCycleDate.timeInMillis - Date().time) / (1000 * 60 * 60 * 24)).toInt().coerceAtLeast(0)
+
+        nextCycleText.text = "Next cycle in $daysLeft days, scheduled for ${
+            SimpleDateFormat("MMMM dd", Locale.ENGLISH).format(nextCycleDate.time)
+        }"
     }
 
-    // setup calendário
     private fun setupCalendar() {
         val calendar = displayedCalendar.clone() as Calendar
         val year = calendar.get(Calendar.YEAR)
@@ -231,24 +178,13 @@ class MainActivity : BaseActivity() {
         val firstDayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK)
         val daysInMonth = tempCal.getActualMaximum(Calendar.DAY_OF_MONTH)
 
-        // espaços antes do primeiro dia
-        for (i in 1 until firstDayOfWeek) {
-            val blankView = TextView(this)
-            blankView.layoutParams = GridLayout.LayoutParams().apply {
-                width = 0
-                height = GridLayout.LayoutParams.WRAP_CONTENT
-                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-            }
-            calendarDaysGrid.addView(blankView)
-        }
+        for (i in 1 until firstDayOfWeek) calendarDaysGrid.addView(TextView(this))
 
-        val recordsMap = cachedCycleRecords.associateBy { it.date }
-
-        // adiciona dias
         for (day in 1..daysInMonth) {
             val dateStr = String.format("%04d-%02d-%02d", year, month + 1, day)
-            val record = recordsMap[dateStr]
-            val phase = record?.phase ?: resolvePhaseForDate(dateStr)
+            val dayLogs = logsByDate[dateStr] ?: emptyList()
+            val dateObj = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse(dateStr)!!
+            val phase = PredictionEngine.calculatePhase(dateObj, userProfile, dayLogs)
 
             val dayPhaseColor = when (phase.lowercase()) {
                 "menstruation" -> Color.parseColor("#FF6B6B")
@@ -262,14 +198,9 @@ class MainActivity : BaseActivity() {
                 text = day.toString()
                 gravity = Gravity.CENTER
                 setPadding(16, 16, 16, 16)
-
-                val bg = ContextCompat.getDrawable(context, R.drawable.rounded_background)?.mutate()
-                background = bg
-                bg?.setTint(dayPhaseColor)
-
                 setTextColor(ContextCompat.getColor(context, R.color.colorPrimary))
+                setBackgroundColor(dayPhaseColor)
 
-                // destaca dia atual
                 val today = Calendar.getInstance()
                 if (calendar.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
                     calendar.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
@@ -279,7 +210,7 @@ class MainActivity : BaseActivity() {
                     setTextColor(Color.WHITE)
                 }
 
-                setOnClickListener { showDayBottomSheet(dateStr, record) }
+                setOnClickListener { showDayBottomSheet(dateStr, dayLogs) }
 
                 layoutParams = GridLayout.LayoutParams().apply {
                     width = 0
@@ -288,38 +219,52 @@ class MainActivity : BaseActivity() {
                     setMargins(4, 4, 4, 4)
                 }
             }
-
             calendarDaysGrid.addView(dayView)
         }
     }
 
-    // resolve fase para data
-    private fun resolvePhaseForDate(dateStr: String): String {
-        cachedCycleRecords.find { it.date == dateStr && it.isManual }?.let { return it.phase }
+    private fun fetchFrequentSymptoms() {
+        val todayStr = getTodayStr()
+        val todayLogs = logsByDate[todayStr] ?: emptyList()
 
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
-        val date = sdf.parse(dateStr) ?: return "Unknown"
+        val prefs = getSharedPreferences("daily_symptoms", MODE_PRIVATE)
+        val lastDate = prefs.getString("last_date", null)
+        if (lastDate != todayStr) {
+            frequentSymptomRecyclerView.adapter = SymptomAdviceAdapter(listOf("Please register symptoms today"))
+            prefs.edit { putString("last_date", todayStr) }
+            return
+        }
 
-        val menstruationRecords = cachedCycleRecords.filter {
-            it.phase.lowercase() == "menstruation" && it.isManual && it.date <= dateStr
-        }.sortedByDescending { it.date }
+        val symptomLogs = todayLogs.filter { it.type.lowercase() == "symptoms" }
+        val activeSymptoms = mutableListOf<String>()
+        symptomLogs.forEach { log ->
+            log.data.forEach { (key, value) ->
+                if (value is Boolean && value) activeSymptoms.add(key.lowercase())
+            }
+        }
 
-        if (menstruationRecords.isEmpty()) return "Unknown"
+        if (activeSymptoms.isEmpty()) {
+            frequentSymptomRecyclerView.adapter = SymptomAdviceAdapter(listOf("Please register symptoms today"))
+            return
+        }
 
-        val lastMenstruation = menstruationRecords.first()
-        val start = sdf.parse(lastMenstruation.date) ?: return "Unknown"
-        val diffDays = ((date.time - start.time) / (1000 * 60 * 60 * 24)).toInt()
-
-        return when {
-            diffDays in 0..4 -> "Menstruation"
-            diffDays in 5..13 -> "Follicular"
-            diffDays in 14..15 -> "Ovulation"
-            diffDays in 16..27 -> "Luteal"
-            else -> "Unknown"
+        val adviceStrings = mutableListOf<String>()
+        activeSymptoms.forEach { symptom ->
+            db.collection("symptom_advices")
+                .whereEqualTo("symptom", symptom)
+                .get()
+                .addOnSuccessListener { result ->
+                    val advice = result.documents.firstOrNull()?.getString("advice") ?: "No advice available"
+                    adviceStrings.add("Symptom: ${symptom.replaceFirstChar { it.uppercase() }}\nAdvice: $advice")
+                    frequentSymptomRecyclerView.adapter = SymptomAdviceAdapter(adviceStrings)
+                }
+                .addOnFailureListener {
+                    adviceStrings.add("Symptom: ${symptom.replaceFirstChar { it.uppercase() }}\nAdvice: Failed to load")
+                    frequentSymptomRecyclerView.adapter = SymptomAdviceAdapter(adviceStrings)
+                }
         }
     }
 
-    // busca conselho para fase
     private fun fetchAdviceForPhase(phase: String) {
         val prefs = getSharedPreferences("advice_prefs", MODE_PRIVATE)
 
@@ -327,46 +272,20 @@ class MainActivity : BaseActivity() {
             .whereEqualTo("phase", phase.replaceFirstChar { it.uppercase() })
             .get()
             .addOnSuccessListener { result ->
-                val advices =
-                    result.documents.mapNotNull { it.toObject(com.example.lunaflow.models.Advice::class.java) }
-
+                val advices = result.documents.mapNotNull { it.toObject(com.example.lunaflow.models.Advice::class.java) }
                 val adviceToShow = if (advices.isNotEmpty()) {
                     val lastIndex = prefs.getInt("last_advice_index_$phase", 0)
                     prefs.edit { putInt("last_advice_index_$phase", lastIndex + 1) }
                     advices[lastIndex % advices.size]
                 } else com.example.lunaflow.models.Advice(phase, "No advices available")
-
                 adviceRecyclerView.adapter = AdviceAdapter(listOf(adviceToShow))
             }
             .addOnFailureListener {
-                adviceRecyclerView.adapter = AdviceAdapter(
-                    listOf(
-                        com.example.lunaflow.models.Advice(
-                            phase,
-                            "Failed to load advice."
-                        )
-                    )
-                )
+                adviceRecyclerView.adapter = AdviceAdapter(listOf(com.example.lunaflow.models.Advice(phase, "Failed to load advice.")))
             }
     }
 
-    private fun getTodayStr(): String {
-        return SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
-    }
-
-    private fun isNewDay(): Boolean {
-        val prefs = getSharedPreferences("daily_symptoms", MODE_PRIVATE)
-        val lastDate = prefs.getString("last_date", null)
-        return lastDate != getTodayStr()
-    }
-
-    private fun updateLastDate() {
-        val prefs = getSharedPreferences("daily_symptoms", MODE_PRIVATE)
-        prefs.edit { putString("last_date", getTodayStr()) }
-    }
-
     private fun scheduleDailyReset() {
-        val now = Calendar.getInstance()
         val nextMidnight = Calendar.getInstance().apply {
             add(Calendar.DAY_OF_YEAR, 1)
             set(Calendar.HOUR_OF_DAY, 0)
@@ -374,104 +293,15 @@ class MainActivity : BaseActivity() {
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }
-        val delay = nextMidnight.timeInMillis - now.timeInMillis
+        val delay = nextMidnight.timeInMillis - Calendar.getInstance().timeInMillis
 
-        Handler(mainLooper).postDelayed({
-            frequentSymptomRecyclerView.adapter =
-                SymptomAdviceAdapter(listOf("Please register symptoms today"))
-            updateLastDate()
-            scheduleDailyReset()
-        }, delay)
+        val resetRequest = OneTimeWorkRequestBuilder<DailySymptomResetWorker>()
+            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+            .build()
+        WorkManager.getInstance(this).enqueue(resetRequest)
     }
 
-    // busca sintomas frequentes
-    private fun fetchFrequentSymptoms(phase: String) {
-        val currentUser = auth.currentUser ?: return
-        val todayStr = getTodayStr()
-
-        // If the day has changed, reset the panel immediately
-        if (isNewDay()) {
-            frequentSymptomRecyclerView.adapter =
-                SymptomAdviceAdapter(listOf("Please register symptoms today"))
-            updateLastDate()
-        }
-
-        db.collection("users").document(currentUser.uid)
-            .collection("cycle_records")
-            .whereEqualTo("date", todayStr) // only today
-            .get()
-            .addOnSuccessListener { snapshot ->
-
-                val symptomLogs = snapshot.documents.mapNotNull { doc ->
-                    try {
-                        val record = doc.toObject(CycleRecord::class.java)
-                        record?.logs?.filter { it.type.lowercase() == "symptoms" }
-                    } catch (e: Exception) {
-                        null
-                    }
-                }.flatten()
-
-                if (symptomLogs.isEmpty()) {
-                    frequentSymptomRecyclerView.adapter =
-                        SymptomAdviceAdapter(listOf("Please register symptoms today"))
-                    return@addOnSuccessListener
-                }
-
-                val symptomFrequency = mutableMapOf<String, Int>()
-                symptomLogs.forEach { log ->
-                    log.data.forEach { (key, value) ->
-                        if (key.lowercase() != "flow" && value is Boolean && value) {
-                            val symptomKey = key.lowercase()
-                            symptomFrequency[symptomKey] =
-                                symptomFrequency.getOrDefault(symptomKey, 0) + 1
-                        }
-                    }
-                }
-
-                if (symptomFrequency.isEmpty()) {
-                    frequentSymptomRecyclerView.adapter =
-                        SymptomAdviceAdapter(listOf("Please register symptoms today"))
-                    return@addOnSuccessListener
-                }
-
-                val symptomAdvices = mutableListOf<String>()
-                var loadedCount = 0
-
-                symptomFrequency.keys.forEach { symptom ->
-                    getSymptomAdvice(phase, symptom) { advice ->
-                        symptomAdvices.add("Symptom: ${symptom.replaceFirstChar { it.uppercase() }}\nAdvice: $advice")
-                        loadedCount++
-                        if (loadedCount == symptomFrequency.size) {
-                            frequentSymptomRecyclerView.adapter = SymptomAdviceAdapter(symptomAdvices)
-                            updateLastDate()
-                        }
-                    }
-                }
-            }
-            .addOnFailureListener {
-                frequentSymptomRecyclerView.adapter =
-                    SymptomAdviceAdapter(listOf("Failed to load symptoms."))
-            }
-    }
-
-    // busca conselho de sintoma
-    private fun getSymptomAdvice(phase: String, symptom: String, callback: (String) -> Unit) {
-        db.collection("symptom_advices")
-        db.collection("symptom_advices")
-            .whereEqualTo("phase", phase.lowercase())
-            .whereEqualTo("symptom", symptom.lowercase())
-            .get()
-            .addOnSuccessListener { result ->
-                val advice = if (result.documents.isNotEmpty())
-                    result.documents[0].getString("advice") ?: "No advice available."
-                else "No advice available."
-                callback(advice)
-            }
-            .addOnFailureListener { callback("No advice available.") }
-    }
-
-    // bottom sheet detalhes do dia
-    private fun showDayBottomSheet(dateStr: String, record: CycleRecord?) {
+    private fun showDayBottomSheet(dateStr: String, logs: List<LogEntry>) {
         val bottomSheet = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.bottomsheet_day_details, null)
 
@@ -479,62 +309,52 @@ class MainActivity : BaseActivity() {
         val logsText = view.findViewById<TextView>(R.id.bottomSheetLogs)
         val symptomsText = view.findViewById<TextView>(R.id.bottomSheetSymptoms)
 
-        if (record != null) {
-            // fase
-            phaseText.text = "Phase: ${record.phase}"
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
+        val dateObj = sdf.parse(dateStr)!!
+        val phase = PredictionEngine.calculatePhase(dateObj, userProfile, logs)
+        phaseText.text = "Phase: $phase"
 
-            val activityLogs = record.logs.filter { it.type.equals("activity", ignoreCase = true) }
-                .mapNotNull { log ->
-                    val activities = mutableListOf<String>()
-
-                    log.data.forEach { (key, value) ->
-                        when (value) {
-                            is Boolean -> if (value) {
-                                activities.add(key.replaceFirstChar { it.uppercase() })
-                            }
-                            is String -> if (value.isNotBlank()) {
-                                activities.add("${key.replaceFirstChar { it.uppercase() }}: $value")
-                            }
-                        }
-                    }
-
-                    if (activities.isNotEmpty())
-                        "Activity: ${activities.joinToString(", ")}"
-                    else null
-                }
-
-            logsText.text =
-                if (activityLogs.isNotEmpty()) activityLogs.joinToString("\n")
-                else "No activity logs"
-
-            val symptomLogs = record.logs.filter { it.type.lowercase() == "symptoms" }
-            val activeSymptoms = mutableListOf<String>()
-            var flowToShow: String? = null
-
-            symptomLogs.forEach { log ->
-                log.data.forEach { (key, value) ->
-                    when {
-                        key.equals("flow", true) && value is String -> flowToShow = value
-                        value is Boolean && value -> activeSymptoms.add(key.replaceFirstChar { it.uppercase() })
-                    }
+        val activityLogs = logs.filter { it.type.equals("activity", true) }.mapNotNull { logEntry ->
+            val activities = logEntry.data.mapNotNull { (key, value) ->
+                when (value) {
+                    is Boolean -> if (value) key.replaceFirstChar { it.uppercase() } else null
+                    is String -> if (value.isNotBlank()) "${key.replaceFirstChar { it.uppercase() }}: $value" else null
+                    else -> null
                 }
             }
-
-            val symptomOutput = mutableListOf<String>()
-            flowToShow?.let { symptomOutput.add("Flow: $it") }
-            if (activeSymptoms.isNotEmpty()) symptomOutput.add(
-                "Symptoms: ${activeSymptoms.joinToString(", ")}"
-            )
-
-            symptomsText.text =
-                if (symptomOutput.isNotEmpty()) symptomOutput.joinToString("\n") else "No symptoms"
-        } else {
-            phaseText.text = "No record for this day"
-            logsText.text = ""
-            symptomsText.text = ""
+            if (activities.isNotEmpty()) "Activity: ${activities.joinToString(", ")}" else null
         }
+        logsText.text = if (activityLogs.isNotEmpty()) activityLogs.joinToString("\n") else "No activity logs"
+
+        val symptomLogs = logs.filter { it.type.lowercase() == "symptoms" }
+        val activeSymptoms = mutableListOf<String>()
+        var flowToShow: String? = null
+        symptomLogs.forEach { logEntry ->
+            logEntry.data.forEach { (key, value) ->
+                when {
+                    key.equals("flow", true) && value is String -> flowToShow = value
+                    value is Boolean && value -> activeSymptoms.add(key.replaceFirstChar { it.uppercase() })
+                    else -> {}
+                }
+            }
+        }
+        val symptomOutput = mutableListOf<String>()
+        flowToShow?.let { symptomOutput.add("Flow: $it") }
+        if (activeSymptoms.isNotEmpty()) symptomOutput.add("Symptoms: ${activeSymptoms.joinToString(", ")}")
+        symptomsText.text = if (symptomOutput.isNotEmpty()) symptomOutput.joinToString("\n") else "No symptoms"
 
         bottomSheet.setContentView(view)
         bottomSheet.show()
+    }
+
+    private fun getTodayStr(): String = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
+
+    private fun loadUserProfile(): UserCycleProfile {
+        val prefs = getSharedPreferences("user_profile", MODE_PRIVATE)
+        return UserCycleProfile(
+            lastPeriodStart = prefs.getString("lastPeriodStart", "2026-02-01") ?: "2026-02-01",
+            cycleLength = prefs.getInt("cycleLength", 28),
+            periodLength = prefs.getInt("periodLength", 5)
+        )
     }
 }

@@ -6,44 +6,40 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.lunaflow.R
-import com.example.lunaflow.models.CycleRecord
+import com.example.lunaflow.models.LogEntry
 import com.example.lunaflow.models.LogType
+import com.example.lunaflow.models.UserCycleProfile
+import com.example.lunaflow.utils.PredictionEngine
+import java.text.SimpleDateFormat
+import java.util.*
 
 class CycleAdapter(
-    private val records: List<CycleRecord>
+    private val logsByDate: Map<String, List<LogEntry>>,
+    private val userProfile: UserCycleProfile
 ) : RecyclerView.Adapter<CycleAdapter.CycleViewHolder>() {
 
-    // view holder do ciclo
     inner class CycleViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvDate: TextView = view.findViewById(R.id.tvDate)
         val tvSymptoms: TextView = view.findViewById(R.id.tvSymptoms)
     }
 
-    // cria view holder
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CycleViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_cycle, parent, false)
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_cycle, parent, false)
         return CycleViewHolder(view)
     }
 
-    // faz bind dos dados do ciclo
     override fun onBindViewHolder(holder: CycleViewHolder, position: Int) {
-        val record = records[position]
-        holder.tvDate.text = record.date
+        val dateStr = logsByDate.keys.elementAt(position)
+        val logs = logsByDate[dateStr] ?: emptyList()
 
-        // mostra sintomas ativos ou mensagem default
-        val symptoms = record.logs
-            .filter { it.type == LogType.symptoms }
+        holder.tvDate.text = dateStr
+
+        val symptoms = logs.filter { it.type == LogType.symptoms }
             .flatMap { it.data.keys }
             .distinct()
 
-        holder.tvSymptoms.text = if (symptoms.isNotEmpty()) {
-            symptoms.joinToString(", ")
-        } else {
-            "No symptoms logged"
-        }
+        holder.tvSymptoms.text = if (symptoms.isNotEmpty()) symptoms.joinToString(", ") else "No symptoms logged"
     }
 
-    // número total de itens
-    override fun getItemCount(): Int = records.size
+    override fun getItemCount(): Int = logsByDate.size
 }

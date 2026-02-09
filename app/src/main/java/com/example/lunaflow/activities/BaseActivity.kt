@@ -132,17 +132,6 @@ abstract class BaseActivity : AppCompatActivity() {
         return true
     }
 
-    // trata clique nos itens do menu
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when(item.itemId) {
-            R.id.action_notifications -> {
-                startActivity(Intent(this, NotificationsActivity::class.java))
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
-
     // cria canal de notificacoes (android 8+)
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

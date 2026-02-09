@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:text="Last Period Start (YYYY-MM-DD)"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"/>
+    <EditText
+        android:id="@+id/lastPeriodInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="date"
+        android:hint="2026-02-01"
+        android:padding="8dp"/>
+
+    <TextView
+        android:text="Cycle Length (days)"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"/>
+    <EditText
+        android:id="@+id/cycleLengthInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="number"
+        android:hint="28"
+        android:padding="8dp"/>
+
+    <TextView
+        android:text="Period Length (days)"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"/>
+    <EditText
+        android:id="@+id/periodLengthInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="number"
+        android:hint="5"
+        android:padding="8dp"/>
+</LinearLayout>

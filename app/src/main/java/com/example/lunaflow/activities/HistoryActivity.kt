@@ -62,15 +62,11 @@ class HistoryActivity : BaseActivity() {
     private fun startListeningToHistory() {
         val userId = auth.currentUser?.uid ?: return
 
-        listenerRegistration = db.collection("users")
-            .document(userId)
-            .collection("cycle_records")
-            .orderBy("date", Query.Direction.DESCENDING)
+        listenerRegistration = db.collection("users").document(userId)
+            .collection("logs")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    error.printStackTrace()
-                    return@addSnapshotListener
-                }
+                if (error != null) { error.printStackTrace(); return@addSnapshotListener }
                 snapshot?.let { buildHistoryList(it.documents) }
             }
     }
@@ -78,30 +74,19 @@ class HistoryActivity : BaseActivity() {
     @SuppressLint("NotifyDataSetChanged")
     private fun buildHistoryList(documents: List<com.google.firebase.firestore.DocumentSnapshot>) {
         allItems.clear()
-
         val sdfDisplay = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
-        val sdfRecord = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         var lastDate = ""
 
-        for (doc in documents) {
-            val record = doc.toObject(CycleRecord::class.java) ?: continue
-            val cycleId = doc.id
-            if (record.logs.isEmpty()) continue
-            val recordDate = sdfRecord.parse(record.date) ?: continue
-            val dateStr = sdfDisplay.format(recordDate)
+        val logs = documents.mapNotNull { doc ->
+            try { doc.toObject(LogEntry::class.java)?.copy(id = doc.id) } catch(e: Exception) { null }
+        }
 
-            if (dateStr != lastDate) {
-                allItems.add(HistoryItem.DateHeader(dateStr))
-                lastDate = dateStr
+        logs.sortedByDescending { it.timestamp }.forEach { log ->
+            if (log.date != lastDate) {
+                allItems.add(HistoryItem.DateHeader(sdfDisplay.format(SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse(log.date)!!)))
+                lastDate = log.date
             }
-
-            record.logs.sortedByDescending { it.timestamp }.forEach { log ->
-                allItems.add(
-                    HistoryItem.Log(
-                        log.copy(cycleId = cycleId)
-                    )
-                )
-            }
+            allItems.add(HistoryItem.Log(log))
         }
 
         filteredItems.clear()
@@ -169,20 +154,9 @@ class HistoryActivity : BaseActivity() {
         val log = logItem.logEntry
         val userId = auth.currentUser?.uid ?: return
 
-        val cycleRef = db.collection("users")
-            .document(userId)
-            .collection("cycle_records")
-            .document(log.cycleId)
-
-        cycleRef.get().addOnSuccessListener { doc ->
-            val record = doc.toObject(CycleRecord::class.java) ?: return@addOnSuccessListener
-            val updatedLogs = record.logs.filter { it.id != log.id }
-
-            if (updatedLogs.isEmpty()) {
-                cycleRef.delete()
-            } else {
-                cycleRef.update("logs", updatedLogs)
-            }
-        }
+        val logsRef = db.collection("users").document(userId).collection("logs")
+        logsRef.document(log.id).delete()
+            .addOnSuccessListener { println("Log deleted successfully") }
+            .addOnFailureListener { it.printStackTrace() }
     }
 }

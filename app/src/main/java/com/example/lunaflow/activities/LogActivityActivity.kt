@@ -7,7 +7,8 @@ import android.widget.*
 import com.example.lunaflow.R
 import com.example.lunaflow.models.LogEntry
 import com.example.lunaflow.models.LogType
-import com.example.lunaflow.models.CycleRecord
+import com.example.lunaflow.models.UserCycleProfile
+import com.example.lunaflow.utils.PredictionEngine
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
@@ -17,7 +18,6 @@ class LogActivityActivity : BaseActivity() {
     private lateinit var timeSinceSpinner: Spinner
     private lateinit var otherMedSpinner: Spinner
     private val riskyMeds = mutableListOf<String>()
-
     private var editingLogEntry: LogEntry? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,13 +79,12 @@ class LogActivityActivity : BaseActivity() {
         findViewById<RadioButton>(R.id.usedProtectionNo).isChecked = protection != "Yes"
 
         val otherMed = data["otherMedication"] as? String
-        if (otherMed != null && otherMed.isNotEmpty() && riskyMeds.isNotEmpty()) {
+        if (!otherMed.isNullOrEmpty() && riskyMeds.isNotEmpty()) {
             val index = riskyMeds.indexOf(otherMed)
             if (index >= 0) otherMedSpinner.setSelection(index)
         }
     }
 
-    // fetch other medications
     private fun fetchMedicationsFromFirebase() {
         FirebaseFirestore.getInstance().collection("medications").get()
             .addOnSuccessListener { docs ->
@@ -97,13 +96,14 @@ class LogActivityActivity : BaseActivity() {
 
                 editingLogEntry?.let { log ->
                     val otherMed = log.data["otherMedication"] as? String
-                    if (otherMed != null && otherMed.isNotEmpty()) {
+                    if (!otherMed.isNullOrEmpty()) {
                         val index = riskyMeds.indexOf(otherMed)
                         if (index >= 0) otherMedSpinner.setSelection(index)
                     }
                 }
             }
     }
+
     private fun saveActivity() {
         val user = auth.currentUser ?: run {
             Toast.makeText(this, "Please log in first", Toast.LENGTH_SHORT).show()
@@ -111,18 +111,17 @@ class LogActivityActivity : BaseActivity() {
         }
         val userId = user.uid
         val db = FirebaseFirestore.getInstance()
-        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
 
-        // if selected by user
+        val selectedDate = intent.getStringExtra("date")
+            ?: SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
+
         val sexChecked = findViewById<CheckBox>(R.id.sex).isChecked
         val planBChecked = findViewById<CheckBox>(R.id.planBPill).isChecked
         val birthControlChecked = findViewById<CheckBox>(R.id.birthControl).isChecked
         val otherMedChecked = findViewById<CheckBox>(R.id.otherMedication).isChecked
-
         val selectedOtherMed = if (otherMedChecked && otherMedSpinner.adapter.count > 0)
             otherMedSpinner.selectedItem.toString() else null
 
-        // if risky combination
         if (birthControlChecked && sexChecked && !selectedOtherMed.isNullOrEmpty()) {
             AlertDialog.Builder(this)
                 .setTitle("Warning")
@@ -134,7 +133,6 @@ class LogActivityActivity : BaseActivity() {
                 .show()
         }
 
-        // edit
         val activityData = mutableMapOf<String, Any>(
             "sex" to sexChecked,
             "masturbation" to findViewById<CheckBox>(R.id.masturbation).isChecked,
@@ -155,58 +153,23 @@ class LogActivityActivity : BaseActivity() {
 
         val log = editingLogEntry?.copy(
             timestamp = System.currentTimeMillis(),
-            data = activityData
+            data = activityData,
+            date = selectedDate
         ) ?: LogEntry(
             id = UUID.randomUUID().toString(),
             type = LogType.activity,
             timestamp = System.currentTimeMillis(),
             title = "Activity",
             details = "",
-            data = activityData
+            data = activityData,
+            date = selectedDate
         )
 
-        // save data
         val logsCollection = db.collection("users").document(userId).collection("logs")
-        if (editingLogEntry != null) {
-            logsCollection.document(editingLogEntry!!.id).set(log)
-        } else {
-            logsCollection.add(log)
-        }
+        if (editingLogEntry != null) logsCollection.document(editingLogEntry!!.id).set(log)
+        else logsCollection.add(log)
 
-        // update or create cycle record for today
-        val cycleRef = db.collection("users").document(userId)
-            .collection("cycle_records").document(todayStr)
-
-        cycleRef.get().addOnSuccessListener { snapshot ->
-            val record = snapshot.toObject(CycleRecord::class.java)
-            val updatedLogs = record?.logs?.toMutableList() ?: mutableListOf()
-
-            editingLogEntry?.let {
-                val index = updatedLogs.indexOfFirst { it.id == editingLogEntry!!.id }
-                if (index >= 0) updatedLogs[index] = log
-                else updatedLogs.add(log)
-            } ?: updatedLogs.add(log)
-
-            if (snapshot.exists()) {
-                cycleRef.update("logs", updatedLogs)
-            } else {
-                val newRecord = CycleRecord(
-                    id = todayStr,
-                    date = todayStr,
-                    phase = "luteal",
-                    flow = "None",
-                    logs = listOf(log),
-                    isManual = true
-                )
-                cycleRef.set(newRecord)
-            }
-        }
-
-        Toast.makeText(
-            this,
-            if (editingLogEntry != null) "Activity updated" else "Activity saved",
-            Toast.LENGTH_SHORT
-        ).show()
+        Toast.makeText(this, if (editingLogEntry != null) "Activity updated" else "Activity saved", Toast.LENGTH_SHORT).show()
         finish()
     }
 }

@@ -1,10 +1,13 @@
 package com.example.lunaflow.models
 
+import android.icu.text.SimpleDateFormat
 import android.os.Parcel
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.Parceler
 import kotlinx.parcelize.TypeParceler
+import java.util.Date
+import java.util.Locale
 
 // Parceler for Map<String, Any> to preserve types
 object MapParceler : Parceler<Map<String, Any>> {
@@ -26,6 +29,7 @@ data class LogEntry(
     val cycleId: String = "",
     val type: String = "",
     val timestamp: Long = System.currentTimeMillis(),
+    val date: String = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date(timestamp)),
     val title: String = "",
     val details: String = "",
     val data: Map<String, Any> = emptyMap()

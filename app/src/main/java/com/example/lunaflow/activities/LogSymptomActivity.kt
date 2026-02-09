@@ -4,9 +4,10 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.*
 import com.example.lunaflow.R
-import com.example.lunaflow.models.CycleRecord
 import com.example.lunaflow.models.LogEntry
 import com.example.lunaflow.models.LogType
+import com.example.lunaflow.models.UserCycleProfile
+import com.example.lunaflow.utils.PredictionEngine
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
@@ -31,10 +32,20 @@ class LogSymptomActivity : BaseActivity() {
         setupBottomNav()
 
         editingLogEntry = intent.getParcelableExtra("logEntry")
+
+        setupFlowSpinner()
         editingLogEntry?.let { prefillFields(it) }
 
         findViewById<Button>(R.id.saveButton).setOnClickListener { saveSymptoms() }
         findViewById<Button>(R.id.cancelButton).setOnClickListener { finish() }
+    }
+
+    private fun setupFlowSpinner() {
+        val flowSpinner = findViewById<Spinner>(R.id.flowSpinner)
+        val flowOptions = listOf("None", "Light", "Medium", "Heavy")
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, flowOptions)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        flowSpinner.adapter = adapter
     }
 
     private fun prefillFields(log: LogEntry) {
@@ -52,11 +63,11 @@ class LogSymptomActivity : BaseActivity() {
 
         findViewById<EditText>(R.id.otherSymptoms).setText(data["otherSymptoms"] as? String ?: "")
 
-        val flowGroup = findViewById<RadioGroup>(R.id.flowRadioGroup)
-        when (data["flow"] as? String) {
-            "Light" -> flowGroup.check(R.id.flowLight)
-            "Medium" -> flowGroup.check(R.id.flowMedium)
-            "Heavy" -> flowGroup.check(R.id.flowHeavy)
+        val flowSpinner = findViewById<Spinner>(R.id.flowSpinner)
+        val flowValue = data["flow"] as? String
+        if (flowValue != null) {
+            val position = (flowSpinner.adapter as ArrayAdapter<String>).getPosition(flowValue)
+            if (position >= 0) flowSpinner.setSelection(position)
         }
     }
 
@@ -64,7 +75,9 @@ class LogSymptomActivity : BaseActivity() {
         val user = auth.currentUser ?: return
         val userId = user.uid
         val db = FirebaseFirestore.getInstance()
-        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
+
+        val selectedDate = intent.getStringExtra("date")
+            ?: SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).format(Date())
 
         val nausea = findViewById<CheckBox>(R.id.nausea).isChecked
         val headache = findViewById<CheckBox>(R.id.headache).isChecked
@@ -77,13 +90,8 @@ class LogSymptomActivity : BaseActivity() {
         val irritability = findViewById<CheckBox>(R.id.irritability).isChecked
         val otherSymptomsText = findViewById<EditText>(R.id.otherSymptoms).text?.toString()?.trim() ?: ""
 
-        val flowGroup = findViewById<RadioGroup>(R.id.flowRadioGroup)
-        val selectedFlow = when (flowGroup.checkedRadioButtonId) {
-            R.id.flowLight -> "Light"
-            R.id.flowMedium -> "Medium"
-            R.id.flowHeavy -> "Heavy"
-            else -> null
-        }
+        val flowSpinner = findViewById<Spinner>(R.id.flowSpinner)
+        val selectedFlow = flowSpinner.selectedItem.toString().takeIf { it != "None" }
 
         if (!listOf(nausea, headache, cramps, bloating, dizziness, fatigue, moodSwings, anxiety, irritability)
                 .any { it } && otherSymptomsText.isEmpty() && selectedFlow == null) {
@@ -107,14 +115,16 @@ class LogSymptomActivity : BaseActivity() {
 
         val logEntry = editingLogEntry?.copy(
             timestamp = System.currentTimeMillis(),
-            data = symptomsMap
+            data = symptomsMap,
+            date = selectedDate
         ) ?: LogEntry(
             id = UUID.randomUUID().toString(),
             type = LogType.symptoms,
             timestamp = System.currentTimeMillis(),
             title = "Symptoms",
             details = "",
-            data = symptomsMap
+            data = symptomsMap,
+            date = selectedDate
         )
 
         val logsCollection = db.collection("users").document(userId).collection("logs")
@@ -124,44 +134,7 @@ class LogSymptomActivity : BaseActivity() {
             logsCollection.add(logEntry)
         }
 
-        val cycleRef = db.collection("users").document(userId)
-            .collection("cycle_records").document(todayStr)
-
-        cycleRef.get().addOnSuccessListener { snapshot ->
-            val record = snapshot.toObject(CycleRecord::class.java)
-            val updatedLogs = record?.logs?.toMutableList() ?: mutableListOf()
-            editingLogEntry?.let {
-                val index = updatedLogs.indexOfFirst { it.id == editingLogEntry!!.id }
-                if (index >= 0) updatedLogs[index] = logEntry
-                else updatedLogs.add(logEntry)
-            } ?: updatedLogs.add(logEntry)
-
-            val updates: MutableMap<String, Any?> = mutableMapOf(
-                "logs" to updatedLogs,
-                "phase" to resolvePhaseForDate(record, selectedFlow),
-                "isManual" to true
-            )
-            selectedFlow?.let { updates["flow"] = it }
-
-            if (snapshot.exists()) cycleRef.update(updates)
-            else {
-                val newRecord = CycleRecord(
-                    id = todayStr,
-                    date = todayStr,
-                    phase = if (selectedFlow != null) "Menstruation" else "Unknown",
-                    flow = selectedFlow ?: "None",
-                    logs = listOf(logEntry),
-                    isManual = true
-                )
-                cycleRef.set(newRecord)
-            }
-        }
-
         Toast.makeText(this, if (editingLogEntry != null) "Symptoms updated" else "Symptoms saved", Toast.LENGTH_SHORT).show()
         finish()
-    }
-
-    private fun resolvePhaseForDate(record: CycleRecord?, selectedFlow: String?): String {
-        return if (selectedFlow != null) "Menstruation" else record?.phase ?: "Unknown"
     }
 }
